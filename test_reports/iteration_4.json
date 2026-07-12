@@ -1,0 +1,30 @@
+{
+  "summary": "Re-tested Stock Entry program filter wire-up. FIX NOT APPLIED. Line 41 of StockEntry.jsx still lacks `program` param; UI shows unfiltered entries after selecting a program in se-prog-filter.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [
+      {
+        "flow": "Stock Entry list filter by program",
+        "issue": "loadEntries() in StockEntry.jsx line 40-42 does NOT send `program` param to /api/stock. Selecting MR in se-prog-filter still shows entries from ProgZ, NRCP, TYPHOID, etc. Main agent's claimed one-line fix was never saved to the file.",
+        "affected_selectors": ["[data-testid='se-prog-filter']"]
+      }
+    ],
+    "design_issues": []
+  },
+  "test_report_links": [],
+  "action_items": [
+    "Apply the actual fix in /app/frontend/src/pages/StockEntry.jsx line 40-43: build params object and add `program: progFilter !== 'all' ? progFilter : undefined`."
+  ],
+  "critical_code_review_comments": [
+    "StockEntry.jsx line 41 params object omits `program` even though progFilter is in the useEffect dependency list (line 56) — filter change triggers reload but with identical params, so table never filters."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "n/a", "frontend": "0% (single feature under retest failed)"},
+  "test_credentials": "admin@stockregister.com / admin123",
+  "seed_data_creation": "None",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Verify line 41 of StockEntry.jsx now includes `program` param, then re-run the same test: log in as admin, go to /stock-entry, open se-prog-filter, pick MR, confirm GET /api/stock?department=MDS&program=MR is fired and table only shows MR rows.",
+  "rca of the issue": "Main agent reported the fix as applied but the code change was not saved. Actual file still reads: `api.get('/stock', { params: { department, search, from_date: from || undefined, to_date: to || undefined } })` with no program key."
+}
