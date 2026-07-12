@@ -1,0 +1,117 @@
+{
+  "theme": "light",
+  "typography": {
+    "primary_font": "Manrope",
+    "secondary_font": "IBM Plex Sans",
+    "heading_strategy": "Use Manrope for all headings (H1-H4) to provide a clean, technical, and authoritative feel. Ensure tight letter spacing (tracking-tight) for large headers.",
+    "body_strategy": "Use IBM Plex Sans for body text, tables, and data-heavy components to ensure maximum legibility at smaller sizes. Use tracking-normal.",
+    "hierarchy": {
+      "h1": "text-3xl sm:text-4xl font-bold tracking-tight text-slate-900",
+      "h2": "text-2xl sm:text-3xl font-semibold tracking-tight text-slate-800",
+      "h3": "text-xl font-medium tracking-tight text-slate-800",
+      "table_header": "text-xs font-bold uppercase tracking-wider text-slate-500",
+      "body": "text-sm text-slate-700",
+      "metric": "text-4xl font-black tracking-tighter text-indigo-950"
+    }
+  },
+  "colors": {
+    "archetype": "Swiss & High-Contrast (Clinical Variant)",
+    "palette": {
+      "primary": "#1E1B4B",
+      "primary_hover": "#312E81",
+      "secondary": "#2563EB",
+      "background": "#F8F9FA",
+      "surface": "#FFFFFF",
+      "border": "#E2E8F0",
+      "text_main": "#0F172A",
+      "text_muted": "#64748B",
+      "status": {
+        "error_nil_stock": "#DC2626",
+        "warning_low_stock": "#EA580C",
+        "alert_short_expiry": "#D97706",
+        "success": "#16A34A",
+        "info": "#0284C7"
+      }
+    },
+    "rules": [
+      "No gradients on surfaces or text. Use solid flat colors.",
+      "High contrast is mandatory for all text elements. Muted text must meet WCAG AA against white backgrounds.",
+      "Use status colors specifically for badges, icons, and highlighted rows (e.g., Short Expiry rows get a subtle red/orange left border).",
+      "Primary actions use Deep Indigo (#1E1B4B) to convey clinical trust and authority."
+    ]
+  },
+  "visual_enhancers": {
+    "surfaces": "Flat solid surfaces with subtle border-black/10 or border-slate-200. NO glassmorphism to avoid a cold, refracting look. Sharp or slightly rounded corners (max rounded-md).",
+    "shadows": "Minimal ambient shadows (shadow-sm) for cards. Interactive elements elevate slightly on hover (shadow-md) with a crisp border.",
+    "density": "Use High Density layouts for tables and forms. Padding should be p-2 or p-3 inside data tables. This is an ERP/Inventory app, so users need to see maximum data without excessive scrolling.",
+    "micro_interactions": "Subtle row highlighting on hover in tables (hover:bg-slate-50). Button active states should translate-y-[1px]."
+  },
+  "layouts": {
+    "global_structure": "Sidebar Navigation (collapsible) + Top Header (Breadcrumbs, Global Search, User Profile). Main content area should be max-w-[1600px] aligned top-left or centered within the remaining viewport.",
+    "login_page": "Split-screen layout. Left side: Clean, clinical login form (Admin/Staff selection). Right side: Modern laboratory image.",
+    "dashboard_home": "Bento Grid high-density mode. Top row: Key metrics (Current Stock Value, Low Stock Count, Short Expiry Count). Bottom section: Recharts-based Program-wise consumption charts.",
+    "data_pages": "Full-width card containing a Shadcn Table with advanced filters, date-pickers, and an 'Export to Excel' CTA in the top right header.",
+    "forms": "Use Shadcn Forms with 2-column grids for Stock Entry and Issue forms. Autocomplete/Command components for item selection to prevent typos."
+  },
+  "navigation_structure": [
+    { "group": "Dashboard", "items": ["Overview (Program-wise)"] },
+    { "group": "Inventory Master", "items": ["MDS", "VPD", "Media"] },
+    { "group": "Transactions", "items": ["Stock Entry", "Issue"] },
+    { "group": "Reports", "items": ["Current Stock", "Monthly Utilisation", "Indent Next Year"] },
+    { "group": "Alerts & Orders", "items": ["Supply Order (All)", "Short Expiry", "Low Stock", "NIL Stock"] }
+  ],
+  "components": {
+    "libraries": [
+      "lucide-react (Icons)",
+      "recharts (Data visualization for consumption dashboard)",
+      "sonner (Toast notifications)",
+      "xlsx (For Excel import/export functionality)",
+      "date-fns (For robust date calculations like 90-day short expiry)"
+    ],
+    "shadcn_required": [
+      "Button, Input, Select, Table, Badge, Card, Dialog, Command (Autocomplete), Tabs, Form, Popover, Calendar"
+    ],
+    "rules": [
+      "Use Command component inside a Popover for 'Select Item' fields to allow typeahead searching.",
+      "Use Badge component with corresponding status colors for Supply Order reasons (e.g., <Badge variant='destructive'>NIL Stock</Badge>).",
+      "Date Pickers MUST use the Calendar component, not native input type='date'.",
+      "Always include data-testid attributes on all interactive elements (buttons, inputs, dropdowns, table rows) for robust testing."
+    ]
+  },
+  "image_urls": {
+    "login_background": {
+      "url": "https://images.unsplash.com/photo-1782397132123-0166b524d6bc?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDk1ODF8MHwxfHNlYXJjaHwxfHxtb2Rlcm4lMjBsYWJvcmF0b3J5JTIwaW50ZXJpb3IlMjBicmlnaHR8ZW58MHx8fHwxNzgzODU1MjY1fDA&ixlib=rb-4.1.0&q=85",
+      "description": "Modern bright laboratory interior. Use on the right half of the split-screen login page with a subtle white/10 overlay."
+    },
+    "abstract_decor": {
+      "url": "https://images.unsplash.com/photo-1781708166347-898b7f09cd1b?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDk1NzZ8MHwxfHNlYXJjaHwxfHxhYnN0cmFjdCUyMG1lZGljYWwlMjBjbGVhbiUyMHdoaXRlfGVufDB8fHx8MTc4Mzg1NTI1OXww&ixlib=rb-4.1.0&q=85",
+      "description": "Abstract medical cubes. Use as a subtle watermark or empty-state background graphic if needed."
+    }
+  },
+  "accessibility": {
+    "contrast": "All text must pass WCAG AA standards. Gray text on white must be at least text-slate-500. Red/Orange badges must have white text.",
+    "focus_states": "Use focus:ring-2 focus:ring-indigo-500 focus:ring-offset-1 on all inputs and buttons.",
+    "aria": "Add aria-label to icon-only buttons. Use semantic HTML for tables (th, td, scope)."
+  },
+  "instructions_to_main_agent": [
+    "Install required dependencies: `npm i lucide-react recharts sonner date-fns xlsx`",
+    "Use JavaScript (.js) instead of TypeScript (.tsx). Remove type annotations when copying from shadcn docs.",
+    "Implement Excel Import/Export using the 'xlsx' library. Provide a distinct 'Export to Excel' Button with a Download icon on table pages.",
+    "Implement the 'Supply Order' tab as a consolidated view of Short Expiry, Low Stock, and NIL Stock items, prominently highlighting the trigger reason.",
+    "Stock balance must be dynamically calculated or meticulously tracked: Current Stock = Total Receipts - Total Issues.",
+    "Critical Value logic: sum(last 3 months utilisation). Low Stock condition: Current Stock <= Critical Value.",
+    "Indent for Next Year logic: Average monthly utilisation over the last 12 months * 12.",
+    "Multi-user Support: Implement mock JWT auth with roles (Admin/Staff). Allow Role-based conditional rendering (e.g., Staff might not edit Master Items).",
+    "Ensure the Sidebar visually separates the departments (MDS, VPD, Media) and functional areas.",
+    "Add 'data-testid' to all buttons, form inputs, and key UI elements."
+  ],
+  "universal_guidelines_for_main_agent": [
+    "Do not converge toward generic outputs. Use crisp, high-density ERP layouts.",
+    "Use solid background colors. No gradients for data-heavy sections.",
+    "Never apply `transition: all`. Target specific properties like `transition-colors`.",
+    "Do not center-align app containers; rely on left-aligned grids for optimal reading flow in data apps.",
+    "Do not use generic AI emojis (🤖💡) for icons. Always use `lucide-react`.",
+    "Toast notifications must use `sonner`.",
+    "Missing images must not be replaced by dummy placeholder text; use the provided image_urls."
+  ]
+}
