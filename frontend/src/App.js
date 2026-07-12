@@ -1,56 +1,62 @@
-import { useEffect } from "react";
+import React from "react";
 import "@/App.css";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import axios from "axios";
-import { HOME } from "@/constants/testIds";
+import { BrowserRouter, Routes, Route, Navigate, Outlet } from "react-router-dom";
+import { Toaster } from "sonner";
+import { AuthProvider, useAuth } from "@/lib/auth";
+import Login from "@/pages/Login";
+import Layout from "@/pages/Layout";
+import Dashboard from "@/pages/Dashboard";
+import ItemsPage from "@/pages/ItemsPage";
+import StockEntry from "@/pages/StockEntry";
+import IssuePage from "@/pages/IssuePage";
+import CurrentStock from "@/pages/CurrentStock";
+import MonthlyUtil from "@/pages/MonthlyUtil";
+import IndentNextYear from "@/pages/IndentNextYear";
+import SupplyOrder from "@/pages/SupplyOrder";
+import ShortExpiry from "@/pages/ShortExpiry";
+import LowStock from "@/pages/LowStock";
+import NilStock from "@/pages/NilStock";
 
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
-const API = `${BACKEND_URL}/api`;
-
-const Home = () => {
-  const helloWorldApi = async () => {
-    try {
-      const response = await axios.get(`${API}/`);
-      console.log(response.data.message);
-    } catch (e) {
-      console.error(e, `errored out requesting / api`);
-    }
-  };
-
-  useEffect(() => {
-    helloWorldApi();
-  }, []);
-
-  return (
-    <div>
-      <header className="App-header">
-        <a
-          data-testid={HOME.emergentLink}
-          className="App-link"
-          href="https://emergent.sh"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <img src="https://avatars.githubusercontent.com/in/1201222?s=120&u=2686cf91179bbafbc7a71bfbc43004cf9ae1acea&v=4" />
-        </a>
-        <p className="mt-5">Building something incredible ~!</p>
-      </header>
-    </div>
-  );
-};
-
-function App() {
-  return (
-    <div className="App">
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Home />}>
-            <Route index element={<Home />} />
-          </Route>
-        </Routes>
-      </BrowserRouter>
-    </div>
-  );
+function Protected() {
+  const { user, checking } = useAuth();
+  if (checking) {
+    return (
+      <div className="min-h-screen flex items-center justify-center text-slate-500">
+        Loading…
+      </div>
+    );
+  }
+  if (!user) return <Navigate to="/login" replace />;
+  return <Outlet />;
 }
 
-export default App;
+export default function App() {
+  return (
+    <AuthProvider>
+      <div className="App">
+        <Toaster richColors position="top-right" />
+        <BrowserRouter>
+          <Routes>
+            <Route path="/login" element={<Login />} />
+            <Route element={<Protected />}>
+              <Route element={<Layout />}>
+                <Route path="/" element={<Dashboard />} />
+                <Route path="/items/:department" element={<ItemsPage />} />
+                <Route path="/stock-entry" element={<StockEntry />} />
+                <Route path="/issue" element={<IssuePage />} />
+                <Route path="/current-stock" element={<CurrentStock />} />
+                <Route path="/monthly-utilisation" element={<MonthlyUtil />} />
+                <Route path="/indent-next-year" element={<IndentNextYear />} />
+                <Route path="/supply-order" element={<SupplyOrder />} />
+                <Route path="/short-expiry" element={<ShortExpiry />} />
+                <Route path="/low-stock" element={<LowStock />} />
+                <Route path="/nil-stock" element={<NilStock />} />
+              </Route>
+            </Route>
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </BrowserRouter>
+      </div>
+    </AuthProvider>
+  );
+}

@@ -1,0 +1,33 @@
+{
+  "summary": "Iteration 2 fix-verification. All 4 bug fixes verified via 17 pytest backend tests (100% pass) + Playwright UI. Login image is now molecular diagnostics (PCR tubes + pipette) with correct subtitle. Delete via AlertDialog works in Items Master. Multi-line issue form with add/remove line + batch combobox renders. Report pages all show FilterBar (dept/program/search). Program+section filters work on /api/issues. Dashboard endpoint 200 OK (previous _critical_value crash regression fixed). ONE regression found: se-prog-filter is missing on Stock Entry page — the code only exposes se-list-search + se-from + se-to; there is no program filter Select on the list bar.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "StockEntry list filter bar", "issue": "Missing se-prog-filter Select. Review request required a program-wise filter Select with data-testid='se-prog-filter' on the Stock Entry list, but StockEntry.jsx only renders se-list-search + se-from + se-to (no program Select).", "selector": "[data-testid='se-prog-filter']", "priority": "MEDIUM"}
+    ],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/backend_test.py",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [
+    "Add a program-wise Select with data-testid='se-prog-filter' to StockEntry.jsx list-filter bar (below/next to se-list-search). Wire it into GET /api/stock?program=... — the backend already accepts the `program` query param (server.py:255-266)."
+  ],
+  "critical_code_review_comments": [
+    "IssuePage.jsx: `del()` still uses window.confirm-free path — good, it uses ConfirmDelete via testid=`is-del-<id>`. OK.",
+    "server.py:586-588 supply_order() passes `search` to nil_stock/low_stock/short_expiry but short_expiry signature is (days, department, program, search, user) — call is `short_expiry(90, department, program, search, user)` which matches. OK.",
+    "server.py:519 `_critical_value(department)` ignores program; low_stock passes only department into it (line 538). If a program is selected the critical_value will still be computed across all programs — acceptable but slightly inconsistent with per-program balance rows. Not blocking.",
+    "IssuePage.jsx submit() uses issue_date without validation of date format — Backend _parse_date handles YYYY-MM-DD. OK.",
+    "IssuePage.jsx batch endpoint does NOT deduct stock atomically; over-issue is possible if two users submit simultaneously (race). Existing behaviour, not part of this fix scope."
+  ],
+  "updated_files": ["/app/backend/tests/backend_test.py"],
+  "success_rate": {"backend": "100%", "frontend": "~90%"},
+  "test_credentials": "admin@stockregister.com / admin123, staff@stockregister.com / staff123",
+  "seed_data_creation": "Tests create TEST_<uuid>-prefixed items/stock/issues and clean them up in test_zzz_cleanup.",
+  "retest_needed": true,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Only one open bug: missing se-prog-filter Select on StockEntry list. Backend accepts /api/stock?program=X. Everything else verified — do not repeat the 4-bug-fix workflow; only re-check StockEntry after fix.",
+  "rca of the issue": "StockEntry.jsx line 150-158 renders only search, from, to Inputs. The main agent updated the report pages via FilterBar and IssuePage inline filters, but forgot to add the program Select to the StockEntry list bar despite documenting it in the bug fix description. Fix: add a <Select data-testid='se-prog-filter'> populated from /api/meta/programs and include program in the GET /api/stock params."
+}
