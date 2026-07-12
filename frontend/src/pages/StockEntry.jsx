@@ -38,7 +38,9 @@ export default function StockEntry() {
     setItems(data);
   };
   const loadEntries = async () => {
-    const { data } = await api.get("/stock", { params: { department, search, from_date: from || undefined, to_date: to || undefined } });
+    const params = { department, search, from_date: from || undefined, to_date: to || undefined };
+    if (progFilter && progFilter !== "all") params.program = progFilter;
+    const { data } = await api.get("/stock", { params });
     setEntries(data);
   };
   const loadMeta = async () => {
