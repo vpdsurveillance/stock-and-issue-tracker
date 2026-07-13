@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { PageHeader, PageBody, ExportButton } from "./_shared";
 import { Card } from "@/components/ui/card";
@@ -8,9 +8,11 @@ import { downloadExcel } from "@/lib/utils-app";
 export default function LowStock() {
   const [rows, setRows] = useState([]);
   const [flt, setFlt] = useState({ department: "all", program: "all", search: "" });
-  useEffect(() => {
-    api.get("/reports/low-stock", { params: toParams(flt) }).then((r) => setRows(r.data));
+  const load = useCallback(async () => {
+    const r = await api.get("/reports/low-stock", { params: toParams(flt) });
+    setRows(r.data);
   }, [flt]);
+  useEffect(() => { load(); }, [load]);
   return (
     <>
       <PageHeader
@@ -31,8 +33,8 @@ export default function LowStock() {
                 </tr>
               </thead>
               <tbody data-testid="ls-body">
-                {rows.map((r, i) => (
-                  <tr key={i} className="border-l-2 border-orange-500">
+                {rows.map((r) => (
+                  <tr key={`${r.department}|${r.item_name}|${r.pack_size}`} className="border-l-2 border-orange-500">
                     <td>{r.department}</td>
                     <td className="font-medium text-slate-900">{r.item_name}</td>
                     <td>{r.pack_size}</td>

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { PageHeader, PageBody } from "./_shared";
 import { Card } from "@/components/ui/card";
@@ -13,10 +13,16 @@ export default function Dashboard() {
   const [stats, setStats] = useState(null);
   const [progs, setProgs] = useState([]);
 
-  useEffect(() => {
-    api.get("/reports/dashboard").then((r) => setStats(r.data));
-    api.get("/reports/program-consumption").then((r) => setProgs(r.data));
+  const load = useCallback(async () => {
+    const [s, p] = await Promise.all([
+      api.get("/reports/dashboard"),
+      api.get("/reports/program-consumption"),
+    ]);
+    setStats(s.data);
+    setProgs(p.data);
   }, []);
+
+  useEffect(() => { load(); }, [load]);
 
   const cards = [
     { label: "Total Balance", value: stats?.total_balance ?? "—", icon: Boxes, color: "text-indigo-950", testid: "stat-balance" },
@@ -66,8 +72,8 @@ export default function Dashboard() {
             <ResponsiveContainer width="100%" height={280}>
               <PieChart>
                 <Pie data={deptChart} dataKey="value" nameKey="name" innerRadius={60} outerRadius={100} label>
-                  {deptChart.map((_, i) => (
-                    <Cell key={i} fill={COLORS[i % COLORS.length]} />
+                  {deptChart.map((entry) => (
+                    <Cell key={entry.name} fill={COLORS[deptChart.indexOf(entry) % COLORS.length]} />
                   ))}
                 </Pie>
                 <Legend />

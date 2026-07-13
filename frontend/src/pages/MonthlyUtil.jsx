@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { PageHeader, PageBody, ExportButton } from "./_shared";
 import { Card } from "@/components/ui/card";
@@ -13,9 +13,12 @@ export default function MonthlyUtil() {
   const [flt, setFlt] = useState({ department: "all", program: "all", search: "" });
   const [year, setYear] = useState(new Date().getFullYear());
 
-  useEffect(() => {
-    api.get("/reports/monthly-utilisation", { params: { ...toParams(flt), year } }).then((r) => setRows(r.data));
+  const load = useCallback(async () => {
+    const r = await api.get("/reports/monthly-utilisation", { params: { ...toParams(flt), year } });
+    setRows(r.data);
   }, [flt, year]);
+
+  useEffect(() => { load(); }, [load]);
 
   return (
     <>
@@ -52,17 +55,20 @@ export default function MonthlyUtil() {
                 </tr>
               </thead>
               <tbody data-testid="mu-body">
-                {rows.map((r, i) => (
-                  <tr key={i}>
-                    <td>{r.department}</td>
-                    <td className="font-medium text-slate-900">{r.item_name}</td>
-                    <td>{r.pack_size}</td>
-                    {MONTHS.map((_, mi) => (
-                      <td key={mi} className="text-right tabular-nums">{r[`m${mi + 1}`] || 0}</td>
-                    ))}
-                    <td className="text-right tabular-nums font-bold">{r.total}</td>
-                  </tr>
-                ))}
+                {rows.map((r) => {
+                  const rk = `${r.department}|${r.item_name}|${r.pack_size}`;
+                  return (
+                    <tr key={rk}>
+                      <td>{r.department}</td>
+                      <td className="font-medium text-slate-900">{r.item_name}</td>
+                      <td>{r.pack_size}</td>
+                      {MONTHS.map((mLabel, mi) => (
+                        <td key={`${rk}-m${mi}`} className="text-right tabular-nums">{r[`m${mi + 1}`] || 0}</td>
+                      ))}
+                      <td className="text-right tabular-nums font-bold">{r.total}</td>
+                    </tr>
+                  );
+                })}
                 {rows.length === 0 && (
                   <tr><td colSpan={16} className="text-center py-8 text-slate-400">No issues for {year}.</td></tr>
                 )}

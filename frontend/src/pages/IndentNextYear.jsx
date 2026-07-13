@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { PageHeader, PageBody, ExportButton } from "./_shared";
 import { Card } from "@/components/ui/card";
@@ -8,9 +8,11 @@ import { downloadExcel } from "@/lib/utils-app";
 export default function IndentNextYear() {
   const [rows, setRows] = useState([]);
   const [flt, setFlt] = useState({ department: "all", program: "all", search: "" });
-  useEffect(() => {
-    api.get("/reports/indent-next-year", { params: toParams(flt) }).then((r) => setRows(r.data));
+  const load = useCallback(async () => {
+    const r = await api.get("/reports/indent-next-year", { params: toParams(flt) });
+    setRows(r.data);
   }, [flt]);
+  useEffect(() => { load(); }, [load]);
 
   return (
     <>
@@ -33,8 +35,8 @@ export default function IndentNextYear() {
                 </tr>
               </thead>
               <tbody data-testid="in-body">
-                {rows.map((r, i) => (
-                  <tr key={i}>
+                {rows.map((r) => (
+                  <tr key={`${r.department}|${r.item_name}|${r.pack_size}`}>
                     <td>{r.department}</td>
                     <td className="font-medium text-slate-900">{r.item_name}</td>
                     <td>{r.pack_size}</td>

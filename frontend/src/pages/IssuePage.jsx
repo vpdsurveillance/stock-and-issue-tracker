@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { api, formatApiError } from "@/lib/api";
 import { PageHeader, PageBody } from "./_shared";
 import { Card } from "@/components/ui/card";
@@ -18,7 +18,7 @@ function todayISO() { return new Date().toISOString().slice(0, 10); }
 const emptyLine = () => ({
   key: Math.random().toString(36).slice(2),
   item_id: "", item_name: "", pack_size: "",
-  batch_key: "", // "{expiry}|{lot}"
+  batch_key: "",
   expiry_date: "", lot_number: "",
   quantity: "",
 });
@@ -41,7 +41,7 @@ export default function IssuePage() {
   const [sectionFilter, setSectionFilter] = useState("all");
   const [from, setFrom] = useState(""); const [to, setTo] = useState("");
 
-  const load = async () => {
+  const load = useCallback(async () => {
     const params = { department, search, from_date: from || undefined, to_date: to || undefined };
     if (progFilter !== "all") params.program = progFilter;
     if (sectionFilter !== "all") params.section = sectionFilter;
@@ -54,19 +54,18 @@ export default function IssuePage() {
     ]);
     setItems(it.data); setLots(cs.data); setIssues(iss.data);
     setSections(sec.data); setProgs(pg.data);
-  };
-
-  useEffect(() => { load(); // eslint-disable-next-line
   }, [department, search, from, to, progFilter, sectionFilter]);
 
+  useEffect(() => { load(); }, [load]);
+
   const itemOpts = useMemo(
-    () => items.map((i) => ({ value: i.id, label: i.name, meta: `Pack: ${i.pack_size}`, pack: i.pack_size, name: i.name })),
+    () => items.map((it) => ({ value: it.id, label: it.name, meta: `Pack: ${it.pack_size}`, pack: it.pack_size, name: it.name })),
     [items]
   );
 
   const batchesFor = (line) => {
     if (!line.item_id) return [];
-    const item = items.find((i) => i.id === line.item_id);
+    const item = items.find((it) => it.id === line.item_id);
     if (!item) return [];
     return lots
       .filter((l) => l.item_name === item.name && l.pack_size === (line.pack_size || item.pack_size) && l.balance > 0)

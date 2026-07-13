@@ -1,15 +1,18 @@
 import axios from "axios";
 
 export const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
+export const TOKEN_KEY = "auth_token";
 
 export const api = axios.create({
   baseURL: API,
   withCredentials: true,
 });
 
-// Attach token from localStorage as fallback (some browsers block 3rd-party cookies)
+// Attach token from sessionStorage as fallback when 3rd-party cookies are blocked.
+// sessionStorage is cleared when the browser tab is closed, reducing XSS/session-hijack surface
+// compared to localStorage. Primary auth remains the httpOnly cookie set by the backend.
 api.interceptors.request.use((cfg) => {
-  const token = localStorage.getItem("token");
+  const token = sessionStorage.getItem(TOKEN_KEY);
   if (token) cfg.headers.Authorization = `Bearer ${token}`;
   return cfg;
 });

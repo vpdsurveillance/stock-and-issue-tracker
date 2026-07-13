@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import { api, formatApiError } from "@/lib/api";
 import { PageHeader, PageBody, ExportButton } from "./_shared";
@@ -23,13 +23,12 @@ export default function ItemsPage() {
   const [packSize, setPackSize] = useState("");
   const fileRef = useRef();
 
-  const load = async () => {
+  const load = useCallback(async () => {
     const { data } = await api.get("/items", { params: { department, search } });
     setItems(data);
-  };
-  useEffect(() => {
-    load(); // eslint-disable-next-line
   }, [department, search]);
+
+  useEffect(() => { load(); }, [load]);
 
   const add = async () => {
     if (!name.trim() || !packSize.trim()) return toast.error("Enter name and pack size");

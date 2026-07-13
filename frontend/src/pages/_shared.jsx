@@ -9,10 +9,10 @@ export function PageHeader({ title, subtitle, breadcrumb, actions }) {
         <div>
           {breadcrumb && (
             <div className="flex items-center gap-1 text-xs text-slate-500 mb-1">
-              {breadcrumb.map((b, i) => (
-                <React.Fragment key={i}>
+              {breadcrumb.map((b) => (
+                <React.Fragment key={b}>
                   <span>{b}</span>
-                  {i < breadcrumb.length - 1 && <ChevronRight size={12} />}
+                  {b !== breadcrumb[breadcrumb.length - 1] && <ChevronRight size={12} />}
                 </React.Fragment>
               ))}
             </div>

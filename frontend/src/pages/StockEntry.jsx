@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { api, formatApiError } from "@/lib/api";
 import { PageHeader, PageBody } from "./_shared";
 import { Card } from "@/components/ui/card";
@@ -33,30 +33,34 @@ export default function StockEntry() {
   const [progFilter, setProgFilter] = useState("all");
   const [from, setFrom] = useState(""); const [to, setTo] = useState("");
 
-  const loadItems = async (dept) => {
+  const loadItems = useCallback(async (dept) => {
     const { data } = await api.get("/items", { params: { department: dept } });
     setItems(data);
-  };
-  const loadEntries = async () => {
+  }, []);
+
+  const loadEntries = useCallback(async () => {
     const params = { department, search, from_date: from || undefined, to_date: to || undefined };
     if (progFilter && progFilter !== "all") params.program = progFilter;
     const { data } = await api.get("/stock", { params });
     setEntries(data);
-  };
-  const loadMeta = async () => {
+  }, [department, search, from, to, progFilter]);
+
+  const loadMeta = useCallback(async () => {
     const [m, s, p] = await Promise.all([
       api.get("/meta/manufacturers"),
       api.get("/meta/suppliers"),
       api.get("/meta/programs"),
     ]);
     setMeta({ manufacturers: m.data, suppliers: s.data, programs: p.data });
-  };
+  }, []);
 
-  useEffect(() => { loadItems(department); setSelectedItemId(""); setPackSize(""); // eslint-disable-next-line
-  }, [department]);
-  useEffect(() => { loadEntries(); // eslint-disable-next-line
-  }, [department, search, from, to, progFilter]);
-  useEffect(() => { loadMeta(); }, []);
+  useEffect(() => {
+    loadItems(department);
+    setSelectedItemId("");
+    setPackSize("");
+  }, [department, loadItems]);
+  useEffect(() => { loadEntries(); }, [loadEntries]);
+  useEffect(() => { loadMeta(); }, [loadMeta]);
 
   const opts = useMemo(
     () => items.map((i) => ({ value: i.id, label: i.name, meta: `Pack: ${i.pack_size}`, pack: i.pack_size, name: i.name })),

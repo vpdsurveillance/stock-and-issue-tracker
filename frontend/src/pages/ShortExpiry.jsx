@@ -1,17 +1,20 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { PageHeader, PageBody, ExportButton } from "./_shared";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { FilterBar, toParams } from "./_filterbar";
 import { downloadExcel, fmtDate } from "@/lib/utils-app";
+import { rowKey } from "@/lib/keys";
 
 export default function ShortExpiry() {
   const [rows, setRows] = useState([]);
   const [flt, setFlt] = useState({ department: "all", program: "all", search: "" });
-  useEffect(() => {
-    api.get("/reports/short-expiry", { params: toParams(flt) }).then((r) => setRows(r.data));
+  const load = useCallback(async () => {
+    const r = await api.get("/reports/short-expiry", { params: toParams(flt) });
+    setRows(r.data);
   }, [flt]);
+  useEffect(() => { load(); }, [load]);
   return (
     <>
       <PageHeader
@@ -32,8 +35,8 @@ export default function ShortExpiry() {
                 </tr>
               </thead>
               <tbody data-testid="se-report-body">
-                {rows.map((r, i) => (
-                  <tr key={i} className="border-l-2 border-amber-500">
+                {rows.map((r) => (
+                  <tr key={rowKey(r)} className="border-l-2 border-amber-500">
                     <td>{r.department}</td>
                     <td className="font-medium text-slate-900">{r.item_name}</td>
                     <td>{r.pack_size}</td>
