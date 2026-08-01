@@ -567,12 +567,7 @@ async def nil_stock(department: Optional[str] = None, program: Optional[str] = N
         k = (r["department"], r["item_name"], r["pack_size"])
         balances[k] = balances.get(k, 0) + r["balance"]
     # Exclude master items with zero receipts (only if no program filter)
-    if not program:
-        item_q = {"department": department} if department else {}
-        items = await db.items.find(item_q, {"_id": 0}).to_list(2000)
-        for it in items:
-            k = (it["department"], it["name"], it["pack_size"])
-            balances.setdefault(k, 0)
+                        
     out = []
     for k, b in balances.items():
         if b > 0: continue
