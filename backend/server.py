@@ -140,7 +140,7 @@ class StockEntryIn(BaseModel):
     program: str
 
 
-class Stock BatchIn(BaseModel):
+class StockBatchIn(BaseModel):
     items: List[StockIn]
 
 
