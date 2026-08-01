@@ -140,6 +140,10 @@ class StockEntryIn(BaseModel):
     program: str
 
 
+class Stock BatchIn(BaseModel):
+    items: List[StockIn]
+
+
 class IssueIn(BaseModel):
     item_id: str
     department: Department
@@ -562,7 +566,7 @@ async def nil_stock(department: Optional[str] = None, program: Optional[str] = N
     for r in rows:
         k = (r["department"], r["item_name"], r["pack_size"])
         balances[k] = balances.get(k, 0) + r["balance"]
-    # Include master items with zero receipts (only if no program filter)
+    # Exclude master items with zero receipts (only if no program filter)
     if not program:
         item_q = {"department": department} if department else {}
         items = await db.items.find(item_q, {"_id": 0}).to_list(2000)
