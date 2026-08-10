@@ -1,3 +1,31 @@
+const exportToExcel = () => {
+  const exportData = entries.map(e => ({
+    Date: e.receipt_date,
+    Department: e.department,
+    Item: e.item_name,
+    PackSize: e.pack_size,
+    Quantity: e.quantity,
+    LotNumber: e.lot_number,
+    ExpiryDate: e.expiry_date,
+    Manufacturer: e.manufacturer,
+    Supplier: e.supplier,
+    Program: e.program
+  }));
+
+  const worksheet = XLSX.utils.json_to_sheet(exportData);
+  const workbook = XLSX.utils.book_new();
+
+  XLSX.utils.book_append_sheet(
+    workbook,
+    worksheet,
+    "StockEntries"
+  );
+
+  XLSX.writeFile(
+    workbook,
+    `Stock_Entries_${new Date().toISOString().slice(0,10)}.xlsx`
+  );
+};
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { api, formatApiError } from "@/lib/api";
 import { PageHeader, PageBody } from "./_shared";
