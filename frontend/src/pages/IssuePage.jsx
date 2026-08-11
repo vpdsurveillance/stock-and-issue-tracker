@@ -292,6 +292,22 @@ export default function IssuePage() {
               From <Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="h-8" />
               To <Input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="h-8" />
             </div>
+            <div className="flex items-center gap-1 text-xs text-slate-500">
+  From <Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="h-8" />
+  To <Input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="h-8" />
+</div>
+
+<Button
+  type="button"
+  onClick={exportToExcel}
+  className="bg-green-600 hover:bg-green-700 text-white"
+>
+  Export Excel
+</Button>
+
+<div className="ml-auto text-xs text-slate-500">
+  {issues.length} issues
+</div>
             <div className="ml-auto text-xs text-slate-500">{issues.length} issues</div>
           </div>
           <div className="overflow-x-auto">
