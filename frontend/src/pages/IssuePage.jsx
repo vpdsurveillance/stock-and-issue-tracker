@@ -52,7 +52,34 @@ const exportToExcel = () => {
   );
 };
 
+import * as XLSX from "xlsx";
+const exportToExcel = () => {
+  const exportData = issues.map((r) => ({
+    Date: r.issue_date,
+    Department: r.department,
+    Item_Name: r.item_name,
+    Pack_Size: r.pack_size,
+    Lot_Number: r.lot_number,
+    Expiry_Date: r.expiry_date,
+    Quantity: r.quantity,
+    Section: r.issued_section,
+    Program: r.program
+  }));
 
+  const worksheet = XLSX.utils.json_to_sheet(exportData);
+  const workbook = XLSX.utils.book_new();
+
+  XLSX.utils.book_append_sheet(
+    workbook,
+    worksheet,
+    "Issue_Transactions"
+  );
+
+  XLSX.writeFile(
+    workbook,
+    `Issue_Transactions_${new Date().toISOString().slice(0,10)}.xlsx`
+  );
+};
 export default function IssuePage() {
   const { user } = useAuth();
   const [department, setDepartment] = useState("MDS");
@@ -306,8 +333,18 @@ export default function IssuePage() {
   Export Excel
 </Button>
 
-<div className="ml-auto text-xs text-slate-500">
-  {issues.length} issues
+<div className="ml-auto flex items-center gap-2">
+  <Button
+    type="button"
+    variant="outline"
+    onClick={exportToExcel}
+  >
+    Export Excel
+  </Button>
+
+  <div className="text-xs text-slate-500">
+    {issues.length} issues
+  </div>
 </div>
             <div className="ml-auto text-xs text-slate-500">{issues.length} issues</div>
           </div>
