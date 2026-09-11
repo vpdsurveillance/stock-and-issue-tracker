@@ -195,8 +195,18 @@ export default function StockEntry() {
               From <Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="h-8" data-testid="se-from" />
               To <Input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="h-8" data-testid="se-to" />
             </div>
-            <div className="ml-auto text-xs text-slate-500">{entries.length} entries</div>
-          </div>
+           <div className="ml-auto flex items-center gap-2">
+  <Button
+    onClick={exportToExcel}
+    variant="outline"
+  >
+    Export Excel
+  </Button>
+
+  <div className="text-xs text-slate-500">
+    {entries.length} entries
+  </div>
+</div>
           <div className="overflow-x-auto">
             <table className="data-table w-full">
               <thead>
