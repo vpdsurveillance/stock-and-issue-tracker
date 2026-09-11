@@ -240,20 +240,32 @@ async def meta_field(field: str, user: dict = Depends(get_current_user)):
 
 
 # --- Stock entries ---
-@api.post("/stock")
-async def create_stock(body: StockEntryIn, user: dict = Depends(get_current_user)):
-    item = await db.items.find_one({"id": body.item_id})
-    if not item:
-        raise HTTPException(404, "Item not found")
-    doc = body.model_dump()
-    doc["id"] = str(uuid.uuid4())
-    doc["receipt_date"] = _iso(_parse_date(doc["receipt_date"]))
-    doc["expiry_date"] = _iso(_parse_date(doc["expiry_date"]))
-    doc["created_at"] = _iso(datetime.now(timezone.utc))
-    doc["created_by"] = user["email"]
-    await db.stock_entries.insert_one(doc)
-    doc.pop("_id", None)
-    return doc
+@api.post("/stock/batch")
+async def create_stock_batch(body: StockBatchIn,
+                             user: dict = Depends(get_current_user)):
+    created = []
+
+    for it in body.items:
+        item = await db.items.find_one({"id": it.item_id})
+        if not item:
+            raise HTTPException(404, f"Item not found: {it.item_name}")
+
+        doc = it.model_dump()
+        doc["id"] = str(uuid.uuid4())
+        doc["receipt_date"] = _iso(_parse_date(doc["receipt_date"]))
+        doc["expiry_date"] = _iso(_parse_date(doc["expiry_date"]))
+        doc["created_at"] = _iso(datetime.now(timezone.utc))
+        doc["created_by"] = user["email"]
+
+        await db.stock_entries.insert_one(doc)
+
+        doc.pop("_id", None)
+        created.append(doc)
+
+    return {
+        "created": len(created),
+        "items": created
+    }
 
 
 @api.get("/stock")
