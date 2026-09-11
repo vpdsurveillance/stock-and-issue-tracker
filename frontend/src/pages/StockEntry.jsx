@@ -3,7 +3,43 @@ export default function StockEntry() {
 
   const exportToExcel = () => {
     const exportData = entries.map(e => ({
-      Date: e.receipt_date,
+ const exportToExcel = async () => {
+  try {
+    const response = await api.get("/export/stock", {
+      params: { department },
+      responseType: "blob",
+    });
+
+    const blob = new Blob(
+      [response.data],
+      {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      }
+    );
+
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement("a");
+
+    link.href = url;
+    link.download = `Stock_Entries_${department}_${new Date()
+      .toISOString()
+      .slice(0, 10)}.xlsx`;
+
+    document.body.appendChild(link);
+    link.click();
+
+    link.remove();
+    window.URL.revokeObjectURL(url);
+
+    toast.success("Stock entries exported successfully");
+  } catch (err) {
+    toast.error(
+      formatApiError(err.response?.data?.detail) ||
+      "Failed to export stock entries"
+    );
+  }
+};
+    Date: e.receipt_date,
       Department: e.department,
       Item: e.item_name,
       PackSize: e.pack_size,
