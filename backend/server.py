@@ -8,7 +8,7 @@ async def root():
     }
 
 api = APIRouter(prefix="/api")
-After redeployingfrom dotenv import load_dotenv
+from dotenv import load_dotenv
 from pathlib import Path
 
 ROOT_DIR = Path(__file__).parent
