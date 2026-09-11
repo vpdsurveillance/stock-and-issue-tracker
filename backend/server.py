@@ -141,7 +141,7 @@ class StockEntryIn(BaseModel):
 
 
 class StockBatchIn(BaseModel):
-    items: List[StockIn]
+    items: List[StockEntryIn]
 
 
 class IssueIn(BaseModel):
