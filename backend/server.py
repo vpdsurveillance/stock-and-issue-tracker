@@ -1,13 +1,3 @@
-app = FastAPI()
-
-@app.get("/")
-async def root():
-    return {
-        "status": "ok",
-        "message": "Stock and Issue Tracker API is running"
-    }
-
-api = APIRouter(prefix="/api")
 from dotenv import load_dotenv
 from pathlib import Path
 
@@ -28,6 +18,16 @@ from pydantic import BaseModel, Field, EmailStr, ConfigDict
 from motor.motor_asyncio import AsyncIOMotorClient
 from starlette.middleware.cors import CORSMiddleware
 from openpyxl import Workbook, load_workbook
+app = FastAPI()
+
+@app.get("/")
+async def root():
+    return {
+        "status": "ok",
+        "message": "Stock and Issue Tracker API is running"
+    }
+
+api = APIRouter(prefix="/api")
 
 # --- Config ---
 JWT_SECRET = os.environ.get("JWT_SECRET", "changeme")
