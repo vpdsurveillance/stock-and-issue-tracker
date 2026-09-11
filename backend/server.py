@@ -1,4 +1,14 @@
-from dotenv import load_dotenv
+app = FastAPI()
+
+@app.get("/")
+async def root():
+    return {
+        "status": "ok",
+        "message": "Stock and Issue Tracker API is running"
+    }
+
+api = APIRouter(prefix="/api")
+After redeployingfrom dotenv import load_dotenv
 from pathlib import Path
 
 ROOT_DIR = Path(__file__).parent
