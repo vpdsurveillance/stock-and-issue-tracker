@@ -606,25 +606,6 @@ async def list_stock(
     return docs
 
 
-@api.delete("/stock/{sid}")
-async def del_stock(
-    sid: str,
-    user: dict = Depends(require_admin)
-):
-
-    r = await db.stock_entries.delete_one({
-        "id": sid
-    })
-
-    if r.deleted_count == 0:
-        raise HTTPException(
-            404,
-            "Not found"
-        )
-
-    return {"ok": True}
-
-
 # ============================================================
 # ITEMS NEVER STOCKED
 # ============================================================
@@ -638,7 +619,6 @@ async def _never_stocked_items(
     if department:
         item_filter["department"] = department
 
-    # All items in Items master
     items = await db.items.find(
         item_filter,
         {"_id": 0}
@@ -647,7 +627,6 @@ async def _never_stocked_items(
         1
     ).to_list(10000)
 
-    # Item IDs that have appeared in stock entries
     stock_filter = {}
 
     if department:
@@ -689,6 +668,10 @@ async def _never_stocked_items(
     return result
 
 
+# IMPORTANT:
+# This specific GET route MUST come BEFORE
+# /stock/{sid}
+
 @api.get("/stock/never-entered")
 async def stock_never_entered(
     department: Optional[str] = None,
@@ -698,6 +681,30 @@ async def stock_never_entered(
     return await _never_stocked_items(
         department
     )
+
+
+# ============================================================
+# DELETE STOCK ENTRY
+# ============================================================
+
+@api.delete("/stock/{sid}")
+async def del_stock(
+    sid: str,
+    user: dict = Depends(require_admin)
+):
+
+    r = await db.stock_entries.delete_one({
+        "id": sid
+    })
+
+    if r.deleted_count == 0:
+        raise HTTPException(
+            404,
+            "Not found"
+        )
+
+    return {"ok": True}
+
 
 
 # ============================================================
