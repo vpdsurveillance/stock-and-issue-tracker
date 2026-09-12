@@ -26,11 +26,7 @@ const emptyLine = () => ({
 
 
 
-  XLSX.writeFile(
-    workbook,
-    `Issue_Transactions_${new Date().toISOString().slice(0,10)}.xlsx`
-  );
-};
+ 
 export default function IssuePage() {
   const { user } = useAuth();
   const [department, setDepartment] = useState("MDS");
