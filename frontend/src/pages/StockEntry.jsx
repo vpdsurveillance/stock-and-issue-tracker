@@ -26,6 +26,7 @@ export default function StockEntry() {
   const { user } = useAuth();
 
   const [department, setDepartment] = useState("MDS");
+
   const [items, setItems] = useState([]);
   const [selectedItemId, setSelectedItemId] = useState("");
   const [packSize, setPackSize] = useState("");
@@ -38,8 +39,10 @@ export default function StockEntry() {
   const [program, setProgram] = useState("");
 
   const [entries, setEntries] = useState([]);
-  const [activeTab, setActiveTab] = useState("entries");
+
   const [neverEnteredItems, setNeverEnteredItems] = useState([]);
+
+  const [activeTab, setActiveTab] = useState("entries");
 
   const [meta, setMeta] = useState({
     manufacturers: [],
@@ -52,9 +55,10 @@ export default function StockEntry() {
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
 
-  // ---------------------------------------------------------
-  // Export stock entries to Excel
-  // ---------------------------------------------------------
+  // =========================================================
+  // EXPORT STOCK ENTRIES
+  // =========================================================
+
   const exportToExcel = async () => {
     try {
       const response = await api.get("/export/stock", {
@@ -69,15 +73,19 @@ export default function StockEntry() {
       });
 
       const url = window.URL.createObjectURL(blob);
+
       const link = document.createElement("a");
 
       link.href = url;
+
       link.download = `Stock_Entries_${department}_${new Date()
         .toISOString()
         .slice(0, 10)}.xlsx`;
 
       document.body.appendChild(link);
+
       link.click();
+
       link.remove();
 
       window.URL.revokeObjectURL(url);
@@ -91,9 +99,54 @@ export default function StockEntry() {
     }
   };
 
-  // ---------------------------------------------------------
-  // Load items
-  // ---------------------------------------------------------
+  // =========================================================
+  // EXPORT ITEMS WITHOUT STOCK ENTRY
+  // =========================================================
+
+  const exportNeverEnteredItems = async () => {
+    try {
+      const response = await api.get("/export/never-stocked", {
+        params: {
+          department,
+        },
+        responseType: "blob",
+      });
+
+      const blob = new Blob([response.data], {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      });
+
+      const url = window.URL.createObjectURL(blob);
+
+      const link = document.createElement("a");
+
+      link.href = url;
+
+      link.download = `Items_Never_Stock_Entered_${department}_${new Date()
+        .toISOString()
+        .slice(0, 10)}.xlsx`;
+
+      document.body.appendChild(link);
+
+      link.click();
+
+      link.remove();
+
+      window.URL.revokeObjectURL(url);
+
+      toast.success("Items without stock entry exported successfully");
+    } catch (err) {
+      toast.error(
+        formatApiError(err.response?.data?.detail) ||
+          "Failed to export items without stock entry"
+      );
+    }
+  };
+
+  // =========================================================
+  // LOAD ITEMS
+  // =========================================================
+
   const loadItems = useCallback(async (dept) => {
     try {
       const { data } = await api.get("/items", {
@@ -111,9 +164,10 @@ export default function StockEntry() {
     }
   }, []);
 
-  // ---------------------------------------------------------
-  // Load stock entries
-  // ---------------------------------------------------------
+  // =========================================================
+  // LOAD STOCK ENTRIES
+  // =========================================================
+
   const loadEntries = useCallback(async () => {
     try {
       const params = {
@@ -140,9 +194,31 @@ export default function StockEntry() {
     }
   }, [department, search, from, to, progFilter]);
 
-  // ---------------------------------------------------------
-  // Load metadata
-  // ---------------------------------------------------------
+  // =========================================================
+  // LOAD ITEMS NEVER STOCK ENTERED
+  // =========================================================
+
+  const loadNeverEnteredItems = useCallback(async () => {
+    try {
+      const { data } = await api.get("/reports/never-stocked", {
+        params: {
+          department,
+        },
+      });
+
+      setNeverEnteredItems(data);
+    } catch (err) {
+      toast.error(
+        formatApiError(err.response?.data?.detail) ||
+          "Failed to load items without stock entry"
+      );
+    }
+  }, [department]);
+
+  // =========================================================
+  // LOAD METADATA
+  // =========================================================
+
   const loadMeta = useCallback(async () => {
     try {
       const [m, s, p] = await Promise.all([
@@ -163,49 +239,34 @@ export default function StockEntry() {
       );
     }
   }, []);
-  const loadNeverEnteredItems = useCallback(async () => {
-  try {
-    const [itemsRes, stockRes] = await Promise.all([
-      api.get("/items", { params: { department } }),
-      api.get("/stock", { params: { department } }),
-    ]);
 
-    const stockedIds = new Set(
-      stockRes.data.map((s) => s.item_id)
-    );
+  // =========================================================
+  // EFFECTS
+  // =========================================================
 
-    const missing = itemsRes.data.filter(
-      (item) => !stockedIds.has(item.id)
-    );
-
-    setNeverEnteredItems(missing);
-  } catch (err) {
-    toast.error("Failed to load items without stock entry");
-  }
-}, [department]);
-  
-
-  // ---------------------------------------------------------
-  // Effects
-  // ---------------------------------------------------------
   useEffect(() => {
     loadItems(department);
+
     setSelectedItemId("");
     setPackSize("");
   }, [department, loadItems]);
 
   useEffect(() => {
-  loadEntries();
-  loadNeverEnteredItems();
-}, [loadEntries, loadNeverEnteredItems]);
+    loadEntries();
+  }, [loadEntries]);
+
+  useEffect(() => {
+    loadNeverEnteredItems();
+  }, [loadNeverEnteredItems]);
 
   useEffect(() => {
     loadMeta();
   }, [loadMeta]);
 
-  // ---------------------------------------------------------
-  // Item options
-  // ---------------------------------------------------------
+  // =========================================================
+  // ITEM OPTIONS
+  // =========================================================
+
   const opts = useMemo(
     () =>
       items.map((i) => ({
@@ -218,21 +279,25 @@ export default function StockEntry() {
     [items]
   );
 
-  // ---------------------------------------------------------
-  // Item selection
-  // ---------------------------------------------------------
+  // =========================================================
+  // ITEM SELECTION
+  // =========================================================
+
   const onItemPick = (val, opt) => {
     setSelectedItemId(val);
     setPackSize(opt?.pack || "");
   };
 
-  // ---------------------------------------------------------
-  // Submit stock entry
-  // ---------------------------------------------------------
+  // =========================================================
+  // SUBMIT STOCK ENTRY
+  // =========================================================
+
   const submit = async (e) => {
     e.preventDefault();
 
-    const item = items.find((i) => i.id === selectedItemId);
+    const item = items.find(
+      (i) => i.id === selectedItemId
+    );
 
     if (!item) {
       return toast.error("Select an item");
@@ -268,6 +333,9 @@ export default function StockEntry() {
       setExpiry("");
 
       await loadEntries();
+
+      await loadNeverEnteredItems();
+
       await loadMeta();
     } catch (err) {
       toast.error(
@@ -278,38 +346,17 @@ export default function StockEntry() {
     }
   };
 
-  // ---------------------------------------------------------
-  // Delete stock entry
-  // ---------------------------------------------------------
- const exportNeverEnteredItems = async () => {
-  const XLSX = await import("xlsx");
+  // =========================================================
+  // DELETE STOCK ENTRY
+  // =========================================================
 
-  const worksheet = XLSX.utils.json_to_sheet(
-    neverEnteredItems.map((i) => ({
-      Department: i.department,
-      Item: i.name,
-      PackSize: i.pack_size,
-    }))
-  );
-
-  const workbook = XLSX.utils.book_new();
-
-  XLSX.utils.book_append_sheet(
-    workbook,
-    worksheet,
-    "ItemsWithoutStock"
-  );
-
-  XLSX.writeFile(
-    workbook,
-    `Items_Without_Stock_${department}.xlsx`
-  );
-};
   const del = async (id) => {
     try {
       await api.delete(`/stock/${id}`);
 
       await loadEntries();
+
+      await loadNeverEnteredItems();
 
       toast.success("Deleted");
     } catch (err) {
@@ -321,6 +368,10 @@ export default function StockEntry() {
     }
   };
 
+  // =========================================================
+  // PAGE
+  // =========================================================
+
   return (
     <>
       <PageHeader
@@ -329,14 +380,19 @@ export default function StockEntry() {
       />
 
       <PageBody>
+
         {/* =====================================================
             STOCK ENTRY FORM
         ====================================================== */}
+
         <Card className="p-5">
           <form
             onSubmit={submit}
             className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4"
           >
+
+            {/* Department */}
+
             <div>
               <Label>Department</Label>
 
@@ -358,6 +414,8 @@ export default function StockEntry() {
               </Select>
             </div>
 
+            {/* Item */}
+
             <div className="md:col-span-2">
               <Label>Item name</Label>
 
@@ -374,15 +432,21 @@ export default function StockEntry() {
               />
             </div>
 
+            {/* Pack size */}
+
             <div>
               <Label>Pack size</Label>
 
               <Input
                 data-testid="se-pack"
                 value={packSize}
-                onChange={(e) => setPackSize(e.target.value)}
+                onChange={(e) =>
+                  setPackSize(e.target.value)
+                }
               />
             </div>
+
+            {/* Quantity */}
 
             <div>
               <Label>Quantity received</Label>
@@ -392,9 +456,13 @@ export default function StockEntry() {
                 type="number"
                 min="1"
                 value={qty}
-                onChange={(e) => setQty(e.target.value)}
+                onChange={(e) =>
+                  setQty(e.target.value)
+                }
               />
             </div>
+
+            {/* Receipt date */}
 
             <div>
               <Label>Date of receipt</Label>
@@ -403,9 +471,13 @@ export default function StockEntry() {
                 data-testid="se-receipt"
                 type="date"
                 value={receiptDate}
-                onChange={(e) => setReceiptDate(e.target.value)}
+                onChange={(e) =>
+                  setReceiptDate(e.target.value)
+                }
               />
             </div>
+
+            {/* Lot */}
 
             <div>
               <Label>Lot number</Label>
@@ -413,9 +485,13 @@ export default function StockEntry() {
               <Input
                 data-testid="se-lot"
                 value={lotNumber}
-                onChange={(e) => setLotNumber(e.target.value)}
+                onChange={(e) =>
+                  setLotNumber(e.target.value)
+                }
               />
             </div>
+
+            {/* Expiry */}
 
             <div>
               <Label>Date of expiry</Label>
@@ -424,9 +500,13 @@ export default function StockEntry() {
                 data-testid="se-expiry"
                 type="date"
                 value={expiry}
-                onChange={(e) => setExpiry(e.target.value)}
+                onChange={(e) =>
+                  setExpiry(e.target.value)
+                }
               />
             </div>
+
+            {/* Manufacturer */}
 
             <div>
               <Label>Manufacturer</Label>
@@ -440,6 +520,8 @@ export default function StockEntry() {
               />
             </div>
 
+            {/* Supplier */}
+
             <div>
               <Label>Supplier</Label>
 
@@ -451,6 +533,8 @@ export default function StockEntry() {
                 options={meta.suppliers}
               />
             </div>
+
+            {/* Program */}
 
             <div>
               <Label>Program</Label>
@@ -464,6 +548,8 @@ export default function StockEntry() {
               />
             </div>
 
+            {/* Submit */}
+
             <div className="flex items-end">
               <Button
                 type="submit"
@@ -473,220 +559,331 @@ export default function StockEntry() {
                 Record Entry
               </Button>
             </div>
+
           </form>
         </Card>
 
         {/* =====================================================
-            STOCK ENTRY LIST
+            TABS
         ====================================================== */}
-       <div className="flex gap-2 mb-3">
-  <Button
-    variant={activeTab === "entries" ? "default" : "outline"}
-    onClick={() => setActiveTab("entries")}
-  >
-    Stock Entries
-  </Button>
 
-  <Button
-    variant={activeTab === "missing" ? "default" : "outline"}
-    onClick={() => setActiveTab("missing")}
-  >
-    Items Without Stock Entry
-  </Button>
-</div>
-       {activeTab === "entries" ? (
- </Card>
-) : (
-  <Card>
-    <div className="p-3 border-b flex justify-between items-center">
-      <h3 className="font-semibold">
-        Items Without Stock Entry
-      </h3>
+        <div className="flex gap-2 mb-3 mt-4">
 
-      <Button
-        variant="outline"
-        onClick={exportNeverEnteredItems}
-      >
-        Export Excel
-      </Button>
-    </div>
+          <Button
+            type="button"
+            variant={
+              activeTab === "entries"
+                ? "default"
+                : "outline"
+            }
+            onClick={() =>
+              setActiveTab("entries")
+            }
+          >
+            Stock Entries
+          </Button>
 
-    <div className="overflow-x-auto">
-      <table className="data-table w-full">
-        <thead>
-          <tr>
-            <th>Department</th>
-            <th>Item Name</th>
-            <th>Pack Size</th>
-          </tr>
-        </thead>
+          <Button
+            type="button"
+            variant={
+              activeTab === "missing"
+                ? "default"
+                : "outline"
+            }
+            onClick={() =>
+              setActiveTab("missing")
+            }
+          >
+            Items Without Stock Entry
+          </Button>
 
-        <tbody>
-          {neverEnteredItems.map((item) => (
-            <tr key={item.id}>
-              <td>{item.department}</td>
-              <td>{item.name}</td>
-              <td>{item.pack_size}</td>
-            </tr>
-          ))}
+        </div>
 
-          {neverEnteredItems.length === 0 && (
-            <tr>
-              <td
-                colSpan={3}
-                className="text-center py-8 text-slate-400"
+        {/* =====================================================
+            STOCK ENTRIES TAB
+        ====================================================== */}
+
+        {activeTab === "entries" && (
+          <Card>
+
+            {/* Filters */}
+
+            <div className="p-3 border-b border-slate-200 flex flex-wrap items-center gap-2">
+
+              <Input
+                placeholder="Search item…"
+                className="max-w-xs"
+                value={search}
+                onChange={(e) =>
+                  setSearch(e.target.value)
+                }
+                data-testid="se-list-search"
+              />
+
+              <Select
+                value={progFilter}
+                onValueChange={setProgFilter}
               >
-                All items already have stock entries.
-              </td>
-            </tr>
-          )}
-        </tbody>
-      </table>
-    </div>
-  </Card>
-)}
-          <div className="p-3 border-b border-slate-200 flex flex-wrap items-center gap-2">
-            <Input
-              placeholder="Search item…"
-              className="max-w-xs"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              data-testid="se-list-search"
-            />
+                <SelectTrigger
+                  className="w-44"
+                  data-testid="se-prog-filter"
+                >
+                  <SelectValue placeholder="All programs" />
+                </SelectTrigger>
 
-            <Select
-              value={progFilter}
-              onValueChange={setProgFilter}
-            >
-              <SelectTrigger
-                className="w-44"
-                data-testid="se-prog-filter"
-              >
-                <SelectValue placeholder="All programs" />
-              </SelectTrigger>
-
-              <SelectContent>
-                <SelectItem value="all">
-                  All programs
-                </SelectItem>
-
-                {meta.programs.map((p) => (
-                  <SelectItem key={p} value={p}>
-                    {p}
+                <SelectContent>
+                  <SelectItem value="all">
+                    All programs
                   </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
 
-            <div className="flex items-center gap-1 text-xs text-slate-500">
-              <span>From</span>
+                  {meta.programs.map((p) => (
+                    <SelectItem key={p} value={p}>
+                      {p}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
 
-              <Input
-                type="date"
-                value={from}
-                onChange={(e) => setFrom(e.target.value)}
-                className="h-8"
-                data-testid="se-from"
-              />
+              <div className="flex items-center gap-1 text-xs text-slate-500">
 
-              <span>To</span>
+                <span>From</span>
 
-              <Input
-                type="date"
-                value={to}
-                onChange={(e) => setTo(e.target.value)}
-                className="h-8"
-                data-testid="se-to"
-              />
-            </div>
+                <Input
+                  type="date"
+                  value={from}
+                  onChange={(e) =>
+                    setFrom(e.target.value)
+                  }
+                  className="h-8"
+                  data-testid="se-from"
+                />
 
-            <div className="ml-auto flex items-center gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={exportToExcel}
-              >
-                Export Excel
-              </Button>
+                <span>To</span>
 
-              <div className="text-xs text-slate-500">
-                {entries.length} entries
+                <Input
+                  type="date"
+                  value={to}
+                  onChange={(e) =>
+                    setTo(e.target.value)
+                  }
+                  className="h-8"
+                  data-testid="se-to"
+                />
+
               </div>
+
+              <div className="ml-auto flex items-center gap-2">
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={exportToExcel}
+                >
+                  Export Excel
+                </Button>
+
+                <div className="text-xs text-slate-500">
+                  {entries.length} entries
+                </div>
+
+              </div>
+
             </div>
-          </div>
 
-          <div className="overflow-x-auto">
-            <table className="data-table w-full">
-              <thead>
-                <tr>
-                  <th>Date</th>
-                  <th>Dept</th>
-                  <th>Item</th>
-                  <th>Pack</th>
-                  <th>Qty</th>
-                  <th>Lot #</th>
-                  <th>Expiry</th>
-                  <th>Manufacturer</th>
-                  <th>Supplier</th>
-                  <th>Program</th>
-                  <th></th>
-                </tr>
-              </thead>
+            {/* Stock entries table */}
 
-              <tbody data-testid="se-list-body">
-                {entries.map((e) => (
-                  <tr key={e.id}>
-                    <td>{fmtDate(e.receipt_date)}</td>
+            <div className="overflow-x-auto">
 
-                    <td>{e.department}</td>
+              <table className="data-table w-full">
 
-                    <td className="font-medium text-slate-900">
-                      {e.item_name}
-                    </td>
-
-                    <td>{e.pack_size}</td>
-
-                    <td className="tabular-nums">
-                      {e.quantity}
-                    </td>
-
-                    <td>{e.lot_number}</td>
-
-                    <td>{fmtDate(e.expiry_date)}</td>
-
-                    <td>{e.manufacturer}</td>
-
-                    <td>{e.supplier}</td>
-
-                    <td>{e.program}</td>
-
-                    <td>
-                      {user?.role === "admin" && (
-                        <ConfirmDelete
-                          testid={`se-del-${e.id}`}
-                          title="Delete stock entry?"
-                          description={`${e.item_name} · Lot ${e.lot_number} · Qty ${e.quantity}`}
-                          onConfirm={() => del(e.id)}
-                        />
-                      )}
-                    </td>
-                  </tr>
-                ))}
-
-                {entries.length === 0 && (
+                <thead>
                   <tr>
-                    <td
-                      colSpan={11}
-                      className="text-center py-8 text-slate-400"
-                    >
-                      No entries recorded.
-                    </td>
+                    <th>Date</th>
+                    <th>Dept</th>
+                    <th>Item</th>
+                    <th>Pack</th>
+                    <th>Qty</th>
+                    <th>Lot #</th>
+                    <th>Expiry</th>
+                    <th>Manufacturer</th>
+                    <th>Supplier</th>
+                    <th>Program</th>
+                    <th></th>
                   </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </Card>
+                </thead>
+
+                <tbody data-testid="se-list-body">
+
+                  {entries.map((e) => (
+                    <tr key={e.id}>
+
+                      <td>
+                        {fmtDate(e.receipt_date)}
+                      </td>
+
+                      <td>
+                        {e.department}
+                      </td>
+
+                      <td className="font-medium text-slate-900">
+                        {e.item_name}
+                      </td>
+
+                      <td>
+                        {e.pack_size}
+                      </td>
+
+                      <td className="tabular-nums">
+                        {e.quantity}
+                      </td>
+
+                      <td>
+                        {e.lot_number}
+                      </td>
+
+                      <td>
+                        {fmtDate(e.expiry_date)}
+                      </td>
+
+                      <td>
+                        {e.manufacturer}
+                      </td>
+
+                      <td>
+                        {e.supplier}
+                      </td>
+
+                      <td>
+                        {e.program}
+                      </td>
+
+                      <td>
+                        {user?.role === "admin" && (
+                          <ConfirmDelete
+                            testid={`se-del-${e.id}`}
+                            title="Delete stock entry?"
+                            description={`${e.item_name} · Lot ${e.lot_number} · Qty ${e.quantity}`}
+                            onConfirm={() =>
+                              del(e.id)
+                            }
+                          />
+                        )}
+                      </td>
+
+                    </tr>
+                  ))}
+
+                  {entries.length === 0 && (
+                    <tr>
+                      <td
+                        colSpan={11}
+                        className="text-center py-8 text-slate-400"
+                      >
+                        No entries recorded.
+                      </td>
+                    </tr>
+                  )}
+
+                </tbody>
+
+              </table>
+
+            </div>
+
+          </Card>
+        )}
+
+        {/* =====================================================
+            ITEMS WITHOUT STOCK ENTRY TAB
+        ====================================================== */}
+
+        {activeTab === "missing" && (
+          <Card>
+
+            <div className="p-3 border-b border-slate-200 flex flex-wrap items-center gap-2">
+
+              <div>
+                <div className="font-semibold text-slate-900">
+                  Items Without Stock Entry
+                </div>
+
+                <div className="text-xs text-slate-500">
+                  Items in the master list that have never
+                  received a stock entry
+                </div>
+              </div>
+
+              <div className="ml-auto flex items-center gap-3">
+
+                <div className="text-xs text-slate-500">
+                  {neverEnteredItems.length} items
+                </div>
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={exportNeverEnteredItems}
+                >
+                  Export Excel
+                </Button>
+
+              </div>
+
+            </div>
+
+            <div className="overflow-x-auto">
+
+              <table className="data-table w-full">
+
+                <thead>
+                  <tr>
+                    <th>Department</th>
+                    <th>Item Name</th>
+                    <th>Pack Size</th>
+                  </tr>
+                </thead>
+
+                <tbody>
+
+                  {neverEnteredItems.map((item) => (
+                    <tr key={item.id}>
+
+                      <td>
+                        {item.department}
+                      </td>
+
+                      <td className="font-medium text-slate-900">
+                        {item.name}
+                      </td>
+
+                      <td>
+                        {item.pack_size}
+                      </td>
+
+                    </tr>
+                  ))}
+
+                  {neverEnteredItems.length === 0 && (
+                    <tr>
+                      <td
+                        colSpan={3}
+                        className="text-center py-8 text-slate-400"
+                      >
+                        All items in {department} have
+                        stock entries.
+                      </td>
+                    </tr>
+                  )}
+
+                </tbody>
+
+              </table>
+
+            </div>
+
+          </Card>
+        )}
+
       </PageBody>
     </>
   );
