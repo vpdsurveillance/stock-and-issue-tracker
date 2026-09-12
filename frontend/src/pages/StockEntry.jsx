@@ -13,11 +13,8 @@ import {
 } from "./_shared";
 
 import { Card } from "@/components/ui/card";
-
 import { Button } from "@/components/ui/button";
-
 import { Input } from "@/components/ui/input";
-
 import { Label } from "@/components/ui/label";
 
 import {
@@ -41,7 +38,6 @@ import {
 } from "@/lib/utils-app";
 
 import { ConfirmDelete } from "./_confirm";
-
 import { useAuth } from "@/lib/auth";
 
 
@@ -55,7 +51,6 @@ function todayISO() {
 export default function StockEntry() {
 
   const { user } = useAuth();
-
 
   // ============================================================
   // MAIN STATE
@@ -97,7 +92,6 @@ export default function StockEntry() {
   const [entries, setEntries] =
     useState([]);
 
-
   // ============================================================
   // METADATA
   // ============================================================
@@ -107,7 +101,6 @@ export default function StockEntry() {
     suppliers: [],
     programs: [],
   });
-
 
   // ============================================================
   // STOCK ENTRY FILTERS
@@ -125,7 +118,6 @@ export default function StockEntry() {
   const [to, setTo] =
     useState("");
 
-
   // ============================================================
   // EXPORT STOCK ENTRIES
   // ============================================================
@@ -134,54 +126,46 @@ export default function StockEntry() {
 
     try {
 
-      const response = await api.get(
-        "/export/stock",
-        {
-          params: {
-            department,
-          },
-          responseType: "blob",
-        }
-      );
+      const response =
+        await api.get(
+          "/export/stock",
+          {
+            params: {
+              department,
+            },
+            responseType: "blob",
+          }
+        );
 
-
-      const blob = new Blob(
-        [response.data],
-        {
-          type:
-            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        }
-      );
-
+      const blob =
+        new Blob(
+          [response.data],
+          {
+            type:
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+          }
+        );
 
       const url =
         window.URL.createObjectURL(blob);
 
-
       const link =
         document.createElement("a");
 
-
       link.href = url;
-
 
       link.download =
         `Stock_Entries_${department}_${new Date()
           .toISOString()
           .slice(0, 10)}.xlsx`;
 
-
       document.body.appendChild(link);
-
 
       link.click();
 
-
       link.remove();
 
-
       window.URL.revokeObjectURL(url);
-
 
       toast.success(
         "Stock entries exported successfully"
@@ -193,57 +177,54 @@ export default function StockEntry() {
         formatApiError(
           err.response?.data?.detail
         ) ||
-          "Failed to export stock entries"
+        "Failed to export stock entries"
       );
 
     }
   };
 
-
   // ============================================================
   // LOAD MASTER ITEMS
   // ============================================================
 
-  const loadItems = useCallback(
-    async (dept) => {
+  const loadItems =
+    useCallback(
+      async (dept) => {
 
-      try {
+        try {
 
-        const { data } =
-          await api.get(
-            "/items",
-            {
-              params: {
-                department: dept,
-              },
-            }
+          const { data } =
+            await api.get(
+              "/items",
+              {
+                params: {
+                  department: dept,
+                },
+              }
+            );
+
+          setItems(
+            Array.isArray(data)
+              ? data
+              : []
           );
 
+        } catch (err) {
 
-        setItems(
-          Array.isArray(data)
-            ? data
-            : []
-        );
-
-      } catch (err) {
-
-        toast.error(
-          formatApiError(
-            err.response?.data?.detail
-          ) ||
+          toast.error(
+            formatApiError(
+              err.response?.data?.detail
+            ) ||
             "Failed to load items"
-        );
+          );
 
+          setItems([]);
 
-        setItems([]);
+        }
 
-      }
-
-    },
-    []
-  );
-
+      },
+      []
+    );
 
   // ============================================================
   // LOAD STOCK ENTRIES
@@ -264,7 +245,6 @@ export default function StockEntry() {
               to || undefined,
           };
 
-
           if (
             progFilter &&
             progFilter !== "all"
@@ -275,7 +255,6 @@ export default function StockEntry() {
 
           }
 
-
           const { data } =
             await api.get(
               "/stock",
@@ -283,7 +262,6 @@ export default function StockEntry() {
                 params,
               }
             );
-
 
           setEntries(
             Array.isArray(data)
@@ -297,9 +275,8 @@ export default function StockEntry() {
             formatApiError(
               err.response?.data?.detail
             ) ||
-              "Failed to load stock entries"
+            "Failed to load stock entries"
           );
-
 
           setEntries([]);
 
@@ -314,7 +291,6 @@ export default function StockEntry() {
         progFilter,
       ]
     );
-
 
   // ============================================================
   // LOAD METADATA
@@ -342,7 +318,6 @@ export default function StockEntry() {
             ),
           ]);
 
-
           setMeta({
             manufacturers:
               m.data || [],
@@ -360,7 +335,7 @@ export default function StockEntry() {
             formatApiError(
               err.response?.data?.detail
             ) ||
-              "Failed to load metadata"
+            "Failed to load metadata"
           );
 
         }
@@ -368,7 +343,6 @@ export default function StockEntry() {
       },
       []
     );
-
 
   // ============================================================
   // EFFECTS
@@ -381,14 +355,12 @@ export default function StockEntry() {
     );
 
     setSelectedItemId("");
-
     setPackSize("");
 
   }, [
     department,
     loadItems,
   ]);
-
 
   useEffect(() => {
 
@@ -398,7 +370,6 @@ export default function StockEntry() {
     loadEntries,
   ]);
 
-
   useEffect(() => {
 
     loadMeta();
@@ -407,211 +378,211 @@ export default function StockEntry() {
     loadMeta,
   ]);
 
-
   // ============================================================
   // ITEM OPTIONS
   // ============================================================
 
-  const opts = useMemo(
-    () =>
-      items.map(
-        (i) => ({
-          value: i.id,
-          label: i.name,
-          meta:
-            `Pack: ${i.pack_size}`,
-          pack:
-            i.pack_size,
-          name:
-            i.name,
-        })
-      ),
-    [items]
-  );
-
+  const opts =
+    useMemo(
+      () =>
+        items.map(
+          (i) => ({
+            value: i.id,
+            label: i.name,
+            meta:
+              `Pack: ${i.pack_size}`,
+            pack:
+              i.pack_size,
+            name:
+              i.name,
+          })
+        ),
+      [items]
+    );
 
   // ============================================================
   // ITEM SELECTION
   // ============================================================
 
-  const onItemPick = (
-    val,
-    opt
-  ) => {
+  const onItemPick =
+    (
+      val,
+      opt
+    ) => {
 
-    setSelectedItemId(val);
+      setSelectedItemId(val);
 
-    setPackSize(
-      opt?.pack || ""
-    );
+      setPackSize(
+        opt?.pack || ""
+      );
 
-  };
-
+    };
 
   // ============================================================
   // SUBMIT STOCK ENTRY
   // ============================================================
 
-  const submit = async (e) => {
+  const submit =
+    async (e) => {
 
-    e.preventDefault();
+      e.preventDefault();
 
+      const item =
+        items.find(
+          (i) =>
+            i.id ===
+            selectedItemId
+        );
 
-    const item =
-      items.find(
-        (i) =>
-          i.id ===
-          selectedItemId
-      );
+      if (!item) {
 
+        return toast.error(
+          "Select an item"
+        );
 
-    if (!item) {
+      }
 
-      return toast.error(
-        "Select an item"
-      );
+      if (
+        !qty ||
+        Number(qty) <= 0
+      ) {
 
-    }
+        return toast.error(
+          "Enter quantity"
+        );
 
+      }
 
-    if (
-      !qty ||
-      Number(qty) <= 0
-    ) {
+      if (!expiry) {
 
-      return toast.error(
-        "Enter quantity"
-      );
+        return toast.error(
+          "Enter expiry date"
+        );
 
-    }
+      }
 
+      try {
 
-    if (!expiry) {
+        // ======================================================
+        // IMPORTANT:
+        // Use the backend batch endpoint.
+        //
+        // This avoids the 405 Method Not Allowed returned by
+        // the currently deployed /api/stock endpoint.
+        //
+        // POST /api/stock/batch
+        // ======================================================
 
-      return toast.error(
-        "Enter expiry date"
-      );
+        await api.post(
+          "/stock/batch",
+          {
+            items: [
+              {
+                item_id:
+                  item.id,
 
-    }
+                department,
 
+                item_name:
+                  item.name,
 
-    try {
+                pack_size:
+                  packSize ||
+                  item.pack_size,
 
-      // ========================================================
-      // SINGLE STOCK ENTRY
-      //
-      // Backend:
-      // POST /api/stock
-      // ========================================================
+                quantity:
+                  Number(qty),
 
-      await api.post(
-        "/stock",
-        {
-          item_id:
-            item.id,
+                receipt_date:
+                  receiptDate,
 
-          department,
+                lot_number:
+                  lotNumber,
 
-          item_name:
-            item.name,
+                expiry_date:
+                  expiry,
 
-          pack_size:
-            packSize ||
-            item.pack_size,
+                manufacturer,
 
-          quantity:
-            Number(qty),
+                supplier,
 
-          receipt_date:
-            receiptDate,
+                program,
+              },
+            ],
+          }
+        );
 
-          lot_number:
-            lotNumber,
+        toast.success(
+          "Stock entry recorded"
+        );
 
-          expiry_date:
-            expiry,
+        // Clear entry-specific fields
 
-          manufacturer,
+        setQty("");
 
-          supplier,
+        setLotNumber("");
 
-          program,
-        }
-      );
+        setExpiry("");
 
+        // Refresh stock history
 
-      toast.success(
-        "Stock entry recorded"
-      );
+        await loadEntries();
 
+        // Refresh metadata
 
-      // Clear entry-specific fields
+        await loadMeta();
 
-      setQty("");
+      } catch (err) {
 
-      setLotNumber("");
+        console.error(
+          "Stock entry error:",
+          err
+        );
 
-      setExpiry("");
-
-
-      // Refresh stock history
-
-      await loadEntries();
-
-
-      // Refresh metadata
-
-      await loadMeta();
-
-    } catch (err) {
-
-      toast.error(
-        formatApiError(
-          err.response?.data?.detail
-        ) ||
+        toast.error(
+          formatApiError(
+            err.response?.data?.detail
+          ) ||
           err.message ||
           "Failed to record stock entry"
-      );
+        );
 
-    }
-  };
+      }
 
+    };
 
   // ============================================================
   // DELETE STOCK ENTRY
   // ============================================================
 
-  const del = async (
-    id
-  ) => {
+  const del =
+    async (id) => {
 
-    try {
+      try {
 
-      await api.delete(
-        `/stock/${id}`
-      );
+        await api.delete(
+          `/stock/${id}`
+        );
 
+        await loadEntries();
 
-      await loadEntries();
+        toast.success(
+          "Deleted"
+        );
 
+      } catch (err) {
 
-      toast.success(
-        "Deleted"
-      );
-
-    } catch (err) {
-
-      toast.error(
-        formatApiError(
-          err.response?.data?.detail
-        ) ||
+        toast.error(
+          formatApiError(
+            err.response?.data?.detail
+          ) ||
           err.message ||
           "Failed to delete stock entry"
-      );
+        );
 
-    }
-  };
+      }
 
+    };
 
   // ============================================================
   // RENDER
@@ -624,9 +595,7 @@ export default function StockEntry() {
         subtitle="Record received stock across departments"
       />
 
-
       <PageBody>
-
 
         {/* ======================================================
             STOCK ENTRY FORM
@@ -639,10 +608,7 @@ export default function StockEntry() {
             className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4"
           >
 
-
-            {/* ==================================================
-                DEPARTMENT
-            ================================================== */}
+            {/* DEPARTMENT */}
 
             <div>
 
@@ -650,11 +616,8 @@ export default function StockEntry() {
                 Department
               </Label>
 
-
               <Select
-                value={
-                  department
-                }
+                value={department}
                 onValueChange={
                   setDepartment
                 }
@@ -668,7 +631,6 @@ export default function StockEntry() {
 
                 </SelectTrigger>
 
-
                 <SelectContent>
 
                   {DEPARTMENTS.map(
@@ -678,9 +640,7 @@ export default function StockEntry() {
                         key={d}
                         value={d}
                       >
-
                         {d}
-
                       </SelectItem>
 
                     )
@@ -692,17 +652,13 @@ export default function StockEntry() {
 
             </div>
 
-
-            {/* ==================================================
-                ITEM
-            ================================================== */}
+            {/* ITEM */}
 
             <div className="md:col-span-2">
 
               <Label>
                 Item name
               </Label>
-
 
               <Combobox
                 value={
@@ -728,10 +684,7 @@ export default function StockEntry() {
 
             </div>
 
-
-            {/* ==================================================
-                PACK SIZE
-            ================================================== */}
+            {/* PACK SIZE */}
 
             <div>
 
@@ -739,14 +692,9 @@ export default function StockEntry() {
                 Pack size
               </Label>
 
-
               <Input
                 data-testid="se-pack"
-
-                value={
-                  packSize
-                }
-
+                value={packSize}
                 onChange={
                   (e) =>
                     setPackSize(
@@ -757,10 +705,7 @@ export default function StockEntry() {
 
             </div>
 
-
-            {/* ==================================================
-                QUANTITY
-            ================================================== */}
+            {/* QUANTITY */}
 
             <div>
 
@@ -768,18 +713,11 @@ export default function StockEntry() {
                 Quantity received
               </Label>
 
-
               <Input
                 data-testid="se-qty"
-
                 type="number"
-
                 min="1"
-
-                value={
-                  qty
-                }
-
+                value={qty}
                 onChange={
                   (e) =>
                     setQty(
@@ -790,10 +728,7 @@ export default function StockEntry() {
 
             </div>
 
-
-            {/* ==================================================
-                RECEIPT DATE
-            ================================================== */}
+            {/* RECEIPT DATE */}
 
             <div>
 
@@ -801,16 +736,10 @@ export default function StockEntry() {
                 Date of receipt
               </Label>
 
-
               <Input
                 data-testid="se-receipt"
-
                 type="date"
-
-                value={
-                  receiptDate
-                }
-
+                value={receiptDate}
                 onChange={
                   (e) =>
                     setReceiptDate(
@@ -821,10 +750,7 @@ export default function StockEntry() {
 
             </div>
 
-
-            {/* ==================================================
-                LOT NUMBER
-            ================================================== */}
+            {/* LOT NUMBER */}
 
             <div>
 
@@ -832,14 +758,9 @@ export default function StockEntry() {
                 Lot number
               </Label>
 
-
               <Input
                 data-testid="se-lot"
-
-                value={
-                  lotNumber
-                }
-
+                value={lotNumber}
                 onChange={
                   (e) =>
                     setLotNumber(
@@ -850,10 +771,7 @@ export default function StockEntry() {
 
             </div>
 
-
-            {/* ==================================================
-                EXPIRY
-            ================================================== */}
+            {/* EXPIRY */}
 
             <div>
 
@@ -861,16 +779,10 @@ export default function StockEntry() {
                 Date of expiry
               </Label>
 
-
               <Input
                 data-testid="se-expiry"
-
                 type="date"
-
-                value={
-                  expiry
-                }
-
+                value={expiry}
                 onChange={
                   (e) =>
                     setExpiry(
@@ -881,10 +793,7 @@ export default function StockEntry() {
 
             </div>
 
-
-            {/* ==================================================
-                MANUFACTURER
-            ================================================== */}
+            {/* MANUFACTURER */}
 
             <div>
 
@@ -892,20 +801,13 @@ export default function StockEntry() {
                 Manufacturer
               </Label>
 
-
               <AutoInput
                 id="mfr"
-
                 testid="se-mfr"
-
-                value={
-                  manufacturer
-                }
-
+                value={manufacturer}
                 onChange={
                   setManufacturer
                 }
-
                 options={
                   meta.manufacturers
                 }
@@ -913,10 +815,7 @@ export default function StockEntry() {
 
             </div>
 
-
-            {/* ==================================================
-                SUPPLIER
-            ================================================== */}
+            {/* SUPPLIER */}
 
             <div>
 
@@ -924,20 +823,13 @@ export default function StockEntry() {
                 Supplier
               </Label>
 
-
               <AutoInput
                 id="sup"
-
                 testid="se-sup"
-
-                value={
-                  supplier
-                }
-
+                value={supplier}
                 onChange={
                   setSupplier
                 }
-
                 options={
                   meta.suppliers
                 }
@@ -945,10 +837,7 @@ export default function StockEntry() {
 
             </div>
 
-
-            {/* ==================================================
-                PROGRAM
-            ================================================== */}
+            {/* PROGRAM */}
 
             <div>
 
@@ -956,20 +845,13 @@ export default function StockEntry() {
                 Program
               </Label>
 
-
               <AutoInput
                 id="prg"
-
                 testid="se-prog"
-
-                value={
-                  program
-                }
-
+                value={program}
                 onChange={
                   setProgram
                 }
-
                 options={
                   meta.programs
                 }
@@ -977,23 +859,16 @@ export default function StockEntry() {
 
             </div>
 
-
-            {/* ==================================================
-                SUBMIT
-            ================================================== */}
+            {/* SUBMIT */}
 
             <div className="flex items-end">
 
               <Button
                 type="submit"
-
                 data-testid="se-submit"
-
                 className="w-full bg-indigo-950 hover:bg-indigo-900"
               >
-
                 Record Entry
-
               </Button>
 
             </div>
@@ -1001,7 +876,6 @@ export default function StockEntry() {
           </form>
 
         </Card>
-
 
         {/* ======================================================
             STOCK ENTRIES HISTORY
@@ -1011,40 +885,25 @@ export default function StockEntry() {
 
           <div className="p-3 border-b border-slate-200 flex flex-wrap items-center gap-2">
 
-
-            {/* ==================================================
-                SEARCH
-            ================================================== */}
+            {/* SEARCH */}
 
             <Input
               placeholder="Search item…"
-
               className="max-w-xs"
-
-              value={
-                search
-              }
-
+              value={search}
               onChange={
                 (e) =>
                   setSearch(
                     e.target.value
                   )
               }
-
               data-testid="se-list-search"
             />
 
-
-            {/* ==================================================
-                PROGRAM FILTER
-            ================================================== */}
+            {/* PROGRAM FILTER */}
 
             <Select
-              value={
-                progFilter
-              }
-
+              value={progFilter}
               onValueChange={
                 setProgFilter
               }
@@ -1052,7 +911,6 @@ export default function StockEntry() {
 
               <SelectTrigger
                 className="w-44"
-
                 data-testid="se-prog-filter"
               >
 
@@ -1062,15 +920,11 @@ export default function StockEntry() {
 
               </SelectTrigger>
 
-
               <SelectContent>
 
-                <SelectItem
-                  value="all"
-                >
+                <SelectItem value="all">
                   All programs
                 </SelectItem>
-
 
                 {meta.programs.map(
                   (p) => (
@@ -1089,10 +943,7 @@ export default function StockEntry() {
 
             </Select>
 
-
-            {/* ==================================================
-                DATE FILTER
-            ================================================== */}
+            {/* DATE FILTER */}
 
             <div className="flex items-center gap-1 text-xs text-slate-500">
 
@@ -1100,89 +951,61 @@ export default function StockEntry() {
                 From
               </span>
 
-
               <Input
                 type="date"
-
-                value={
-                  from
-                }
-
+                value={from}
                 onChange={
                   (e) =>
                     setFrom(
                       e.target.value
                     )
                 }
-
                 className="h-8"
-
                 data-testid="se-from"
               />
-
 
               <span>
                 To
               </span>
 
-
               <Input
                 type="date"
-
-                value={
-                  to
-                }
-
+                value={to}
                 onChange={
                   (e) =>
                     setTo(
                       e.target.value
                     )
                 }
-
                 className="h-8"
-
                 data-testid="se-to"
               />
 
             </div>
 
-
-            {/* ==================================================
-                EXPORT
-            ================================================== */}
+            {/* EXPORT */}
 
             <div className="ml-auto flex items-center gap-2">
 
               <Button
                 type="button"
-
                 variant="outline"
-
                 onClick={
                   exportToExcel
                 }
               >
-
                 Export Excel
-
               </Button>
 
-
               <div className="text-xs text-slate-500">
-
                 {entries.length} entries
-
               </div>
 
             </div>
 
           </div>
 
-
-          {/* ====================================================
-              STOCK TABLE
-          ==================================================== */}
+          {/* STOCK TABLE */}
 
           <div className="overflow-x-auto">
 
@@ -1192,52 +1015,21 @@ export default function StockEntry() {
 
                 <tr>
 
-                  <th>
-                    Date
-                  </th>
-
-                  <th>
-                    Dept
-                  </th>
-
-                  <th>
-                    Item
-                  </th>
-
-                  <th>
-                    Pack
-                  </th>
-
-                  <th>
-                    Qty
-                  </th>
-
-                  <th>
-                    Lot #
-                  </th>
-
-                  <th>
-                    Expiry
-                  </th>
-
-                  <th>
-                    Manufacturer
-                  </th>
-
-                  <th>
-                    Supplier
-                  </th>
-
-                  <th>
-                    Program
-                  </th>
-
+                  <th>Date</th>
+                  <th>Dept</th>
+                  <th>Item</th>
+                  <th>Pack</th>
+                  <th>Qty</th>
+                  <th>Lot #</th>
+                  <th>Expiry</th>
+                  <th>Manufacturer</th>
+                  <th>Supplier</th>
+                  <th>Program</th>
                   <th></th>
 
                 </tr>
 
               </thead>
-
 
               <tbody
                 data-testid="se-list-body"
@@ -1256,59 +1048,43 @@ export default function StockEntry() {
                         )}
                       </td>
 
-
                       <td>
                         {e.department}
                       </td>
 
-
                       <td className="font-medium text-slate-900">
-
                         {e.item_name}
-
                       </td>
-
 
                       <td>
                         {e.pack_size}
                       </td>
 
-
                       <td className="tabular-nums">
-
                         {e.quantity}
-
                       </td>
-
 
                       <td>
                         {e.lot_number}
                       </td>
 
-
                       <td>
-
                         {fmtDate(
                           e.expiry_date
                         )}
-
                       </td>
-
 
                       <td>
                         {e.manufacturer}
                       </td>
 
-
                       <td>
                         {e.supplier}
                       </td>
 
-
                       <td>
                         {e.program}
                       </td>
-
 
                       <td>
 
@@ -1316,23 +1092,18 @@ export default function StockEntry() {
                           "admin" && (
 
                           <ConfirmDelete
-
                             testid={
                               `se-del-${e.id}`
                             }
-
                             title="Delete stock entry?"
-
                             description={
                               `${e.item_name} · Lot ${e.lot_number} · Qty ${e.quantity}`
                             }
-
                             onConfirm={() =>
                               del(
                                 e.id
                               )
                             }
-
                           />
 
                         )}
@@ -1344,7 +1115,6 @@ export default function StockEntry() {
                   )
                 )}
 
-
                 {entries.length ===
                   0 && (
 
@@ -1352,13 +1122,9 @@ export default function StockEntry() {
 
                     <td
                       colSpan={11}
-
                       className="text-center py-8 text-slate-400"
                     >
-
-                      No entries
-                      recorded.
-
+                      No entries recorded.
                     </td>
 
                   </tr>
