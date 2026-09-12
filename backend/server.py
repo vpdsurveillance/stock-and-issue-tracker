@@ -491,9 +491,82 @@ async def current_stock(department: Optional[str] = None, search: Optional[str] 
 
 
 @api.get("/reports/short-expiry")
-async def short_expiry(days: int = 90, department: Optional[str] = None,
-                       program: Optional[str] = None, search: Optional[str] = None,
-                       user: dict = Depends(get_current_user)):
+async def short_expiry(
+    days: int = 90,
+    department: Optional[str] = None,
+    program: Optional[str] = None,
+    search: Optional[str] = None,
+    user: dict = Depends(get_current_user)
+):
+    rows = await _current_stock_rows(department, program)
+
+    now = datetime.now(timezone.utc)
+    cutoff = now + timedelta(days=days)
+
+    # Group all lots belonging to the same item
+    grouped = {}
+
+    for r in rows:
+        key = (
+            r["department"],
+            r["item_name"],
+            r["pack_size"]
+        )
+
+        if key not in grouped:
+            grouped[key] = {
+                "rows": [],
+                "total_balance": 0
+            }
+
+        # Only stock that is actually available is considered
+        if r["balance"] > 0:
+            grouped[key]["rows"].append(r)
+            grouped[key]["total_balance"] += r["balance"]
+
+    out = []
+
+    for key, data in grouped.items():
+
+        if search and search.lower() not in key[1].lower():
+            continue
+
+        available_rows = data["rows"]
+
+        # No usable stock
+        if not available_rows:
+            continue
+
+        # Check whether there is ANY available lot
+        # whose expiry is beyond the short-expiry cutoff.
+        has_sufficient_expiry_stock = False
+
+        short_expiry_rows = []
+
+        for r in available_rows:
+            exp = _parse_date(r["expiry_date"])
+
+            if exp <= cutoff:
+                short_expiry_rows.append(r)
+            else:
+                # This lot has sufficient remaining expiry
+                has_sufficient_expiry_stock = True
+
+        # If another batch has sufficient expiry,
+        # DO NOT report the item as short expiry.
+        if has_sufficient_expiry_stock:
+            continue
+
+        # All available batches are short expiry
+        for r in short_expiry_rows:
+            r2 = dict(r)
+            exp = _parse_date(r["expiry_date"])
+            r2["days_to_expiry"] = (exp - now).days
+            out.append(r2)
+
+    out.sort(key=lambda x: x["days_to_expiry"])
+
+    return out
     rows = await _current_stock_rows(department, program)
     now = datetime.now(timezone.utc)
     cutoff = now + timedelta(days=days)
