@@ -21,13 +21,10 @@ const emptyLine = () => ({
   item_id: "", item_name: "", pack_size: "",
   batch_key: "",
   expiry_date: "", lot_number: "",
-  quantity: "",
-});
+  quantity: "",});
 writeFile(
     workbook,
-    `Issue_Transactions_${new Date().toISOString().slice(0,10)}.xlsx`
-  );
-};
+    `Issue_Transactions_${new Date().toISOString().slice(0,10)}.xlsx`);};
 
 
 const exportToExcel = () => {
