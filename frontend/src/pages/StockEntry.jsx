@@ -38,6 +38,8 @@ export default function StockEntry() {
   const [program, setProgram] = useState("");
 
   const [entries, setEntries] = useState([]);
+  const [activeTab, setActiveTab] = useState("entries");
+  const [neverEnteredItems, setNeverEnteredItems] = useState([]);
 
   const [meta, setMeta] = useState({
     manufacturers: [],
@@ -161,6 +163,27 @@ export default function StockEntry() {
       );
     }
   }, []);
+  const loadNeverEnteredItems = useCallback(async () => {
+  try {
+    const [itemsRes, stockRes] = await Promise.all([
+      api.get("/items", { params: { department } }),
+      api.get("/stock", { params: { department } }),
+    ]);
+
+    const stockedIds = new Set(
+      stockRes.data.map((s) => s.item_id)
+    );
+
+    const missing = itemsRes.data.filter(
+      (item) => !stockedIds.has(item.id)
+    );
+
+    setNeverEnteredItems(missing);
+  } catch (err) {
+    toast.error("Failed to load items without stock entry");
+  }
+}, [department]);
+  
 
   // ---------------------------------------------------------
   // Effects
@@ -172,8 +195,9 @@ export default function StockEntry() {
   }, [department, loadItems]);
 
   useEffect(() => {
-    loadEntries();
-  }, [loadEntries]);
+  loadEntries();
+  loadNeverEnteredItems();
+}, [loadEntries, loadNeverEnteredItems]);
 
   useEffect(() => {
     loadMeta();
@@ -257,6 +281,30 @@ export default function StockEntry() {
   // ---------------------------------------------------------
   // Delete stock entry
   // ---------------------------------------------------------
+ const exportNeverEnteredItems = async () => {
+  const XLSX = await import("xlsx");
+
+  const worksheet = XLSX.utils.json_to_sheet(
+    neverEnteredItems.map((i) => ({
+      Department: i.department,
+      Item: i.name,
+      PackSize: i.pack_size,
+    }))
+  );
+
+  const workbook = XLSX.utils.book_new();
+
+  XLSX.utils.book_append_sheet(
+    workbook,
+    worksheet,
+    "ItemsWithoutStock"
+  );
+
+  XLSX.writeFile(
+    workbook,
+    `Items_Without_Stock_${department}.xlsx`
+  );
+};
   const del = async (id) => {
     try {
       await api.delete(`/stock/${id}`);
@@ -431,7 +479,72 @@ export default function StockEntry() {
         {/* =====================================================
             STOCK ENTRY LIST
         ====================================================== */}
-        <Card>
+       <div className="flex gap-2 mb-3">
+  <Button
+    variant={activeTab === "entries" ? "default" : "outline"}
+    onClick={() => setActiveTab("entries")}
+  >
+    Stock Entries
+  </Button>
+
+  <Button
+    variant={activeTab === "missing" ? "default" : "outline"}
+    onClick={() => setActiveTab("missing")}
+  >
+    Items Without Stock Entry
+  </Button>
+</div>
+       {activeTab === "entries" ? (
+ </Card>
+) : (
+  <Card>
+    <div className="p-3 border-b flex justify-between items-center">
+      <h3 className="font-semibold">
+        Items Without Stock Entry
+      </h3>
+
+      <Button
+        variant="outline"
+        onClick={exportNeverEnteredItems}
+      >
+        Export Excel
+      </Button>
+    </div>
+
+    <div className="overflow-x-auto">
+      <table className="data-table w-full">
+        <thead>
+          <tr>
+            <th>Department</th>
+            <th>Item Name</th>
+            <th>Pack Size</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          {neverEnteredItems.map((item) => (
+            <tr key={item.id}>
+              <td>{item.department}</td>
+              <td>{item.name}</td>
+              <td>{item.pack_size}</td>
+            </tr>
+          ))}
+
+          {neverEnteredItems.length === 0 && (
+            <tr>
+              <td
+                colSpan={3}
+                className="text-center py-8 text-slate-400"
+              >
+                All items already have stock entries.
+              </td>
+            </tr>
+          )}
+        </tbody>
+      </table>
+    </div>
+  </Card>
+)}
           <div className="p-3 border-b border-slate-200 flex flex-wrap items-center gap-2">
             <Input
               placeholder="Search item…"
