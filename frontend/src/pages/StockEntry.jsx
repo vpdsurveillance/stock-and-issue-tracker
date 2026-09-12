@@ -25,16 +25,12 @@ function todayISO() {
 export default function StockEntry() {
   const { user } = useAuth();
 
-  // ============================================================
-  // MAIN STATE
-  // ============================================================
-
   const [department, setDepartment] = useState("MDS");
 
   const [items, setItems] = useState([]);
   const [selectedItemId, setSelectedItemId] = useState("");
-
   const [packSize, setPackSize] = useState("");
+
   const [qty, setQty] = useState("");
   const [receiptDate, setReceiptDate] = useState(todayISO());
   const [lotNumber, setLotNumber] = useState("");
@@ -44,20 +40,9 @@ export default function StockEntry() {
   const [program, setProgram] = useState("");
 
   const [entries, setEntries] = useState([]);
-
-  // ============================================================
-  // NEVER STOCK ENTERED
-  // ============================================================
-
   const [neverEnteredItems, setNeverEnteredItems] = useState([]);
-  const [neverEnteredSearch, setNeverEnteredSearch] = useState("");
 
-  // Active tab
-  const [activeTab, setActiveTab] = useState("entries");
-
-  // ============================================================
-  // METADATA
-  // ============================================================
+  const [activeTab, setActiveTab] = useState("entry");
 
   const [meta, setMeta] = useState({
     manufacturers: [],
@@ -65,25 +50,22 @@ export default function StockEntry() {
     programs: [],
   });
 
-  // ============================================================
-  // STOCK ENTRY FILTERS
-  // ============================================================
-
   const [search, setSearch] = useState("");
   const [progFilter, setProgFilter] = useState("all");
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
 
-  // ============================================================
-  // EXPORT STOCK ENTRIES
-  // ============================================================
+  const [loading, setLoading] = useState(false);
+  const [loadingNeverEntered, setLoadingNeverEntered] = useState(false);
+
+  /* -----------------------------------------------------------
+     EXPORT STOCK ENTRIES
+  ----------------------------------------------------------- */
 
   const exportToExcel = async () => {
     try {
       const response = await api.get("/export/stock", {
-        params: {
-          department,
-        },
+        params: { department },
         responseType: "blob",
       });
 
@@ -92,19 +74,15 @@ export default function StockEntry() {
       });
 
       const url = window.URL.createObjectURL(blob);
-
       const link = document.createElement("a");
 
       link.href = url;
-
       link.download = `Stock_Entries_${department}_${new Date()
         .toISOString()
         .slice(0, 10)}.xlsx`;
 
       document.body.appendChild(link);
-
       link.click();
-
       link.remove();
 
       window.URL.revokeObjectURL(url);
@@ -118,16 +96,14 @@ export default function StockEntry() {
     }
   };
 
-  // ============================================================
-  // EXPORT NEVER STOCKED ITEMS
-  // ============================================================
+  /* -----------------------------------------------------------
+     EXPORT NEVER STOCKED ITEMS
+  ----------------------------------------------------------- */
 
-  const exportNeverEnteredToExcel = async () => {
+  const exportNeverStocked = async () => {
     try {
       const response = await api.get("/export/never-stocked", {
-        params: {
-          department,
-        },
+        params: { department },
         responseType: "blob",
       });
 
@@ -136,45 +112,39 @@ export default function StockEntry() {
       });
 
       const url = window.URL.createObjectURL(blob);
-
       const link = document.createElement("a");
 
       link.href = url;
-
-      link.download = `Items_Never_Stocked_${department}_${new Date()
+      link.download = `Never_Stocked_${department}_${new Date()
         .toISOString()
         .slice(0, 10)}.xlsx`;
 
       document.body.appendChild(link);
-
       link.click();
-
       link.remove();
 
       window.URL.revokeObjectURL(url);
 
-      toast.success("Never-stocked items exported successfully");
+      toast.success("Never stocked items exported successfully");
     } catch (err) {
       toast.error(
         formatApiError(err.response?.data?.detail) ||
-          "Failed to export never-stocked items"
+          "Failed to export never stocked items"
       );
     }
   };
 
-  // ============================================================
-  // LOAD ITEMS MASTER
-  // ============================================================
+  /* -----------------------------------------------------------
+     LOAD MASTER ITEMS
+  ----------------------------------------------------------- */
 
   const loadItems = useCallback(async (dept) => {
     try {
       const { data } = await api.get("/items", {
-        params: {
-          department: dept,
-        },
+        params: { department: dept },
       });
 
-      setItems(data);
+      setItems(data || []);
     } catch (err) {
       toast.error(
         formatApiError(err.response?.data?.detail) ||
@@ -183,9 +153,9 @@ export default function StockEntry() {
     }
   }, []);
 
-  // ============================================================
-  // LOAD STOCK ENTRIES
-  // ============================================================
+  /* -----------------------------------------------------------
+     LOAD STOCK ENTRIES
+  ----------------------------------------------------------- */
 
   const loadEntries = useCallback(async () => {
     try {
@@ -200,61 +170,47 @@ export default function StockEntry() {
         params.program = progFilter;
       }
 
-      const { data } = await api.get("/stock", {
-        params,
-      });
+      const { data } = await api.get("/stock", { params });
 
-      setEntries(data);
+      setEntries(data || []);
     } catch (err) {
       toast.error(
         formatApiError(err.response?.data?.detail) ||
           "Failed to load stock entries"
       );
     }
-  }, [
-    department,
-    search,
-    from,
-    to,
-    progFilter,
-  ]);
+  }, [department, search, from, to, progFilter]);
 
-  // ============================================================
-  // LOAD ITEMS THAT NEVER HAD STOCK ENTRY
-  // ============================================================
+  /* -----------------------------------------------------------
+     LOAD ITEMS THAT NEVER HAD STOCK ENTRY
+  ----------------------------------------------------------- */
 
   const loadNeverEnteredItems = useCallback(async () => {
+    setLoadingNeverEntered(true);
+
     try {
-      const { data } = await api.get(
-        "/stock/never-entered",
-        {
-          params: {
-            department,
-          },
-        }
-      );
+      const { data } = await api.get("/stock/never-entered", {
+        params: {
+          department,
+        },
+      });
 
-      setNeverEnteredItems(
-        Array.isArray(data) ? data : []
-      );
+      setNeverEnteredItems(data || []);
     } catch (err) {
-      console.error(
-        "Never-entered items error:",
-        err
-      );
-
       toast.error(
         formatApiError(err.response?.data?.detail) ||
           "Failed to load items without stock entry"
       );
 
       setNeverEnteredItems([]);
+    } finally {
+      setLoadingNeverEntered(false);
     }
   }, [department]);
 
-  // ============================================================
-  // LOAD METADATA
-  // ============================================================
+  /* -----------------------------------------------------------
+     LOAD METADATA
+  ----------------------------------------------------------- */
 
   const loadMeta = useCallback(async () => {
     try {
@@ -265,9 +221,9 @@ export default function StockEntry() {
       ]);
 
       setMeta({
-        manufacturers: m.data,
-        suppliers: s.data,
-        programs: p.data,
+        manufacturers: m.data || [],
+        suppliers: s.data || [],
+        programs: p.data || [],
       });
     } catch (err) {
       toast.error(
@@ -277,469 +233,248 @@ export default function StockEntry() {
     }
   }, []);
 
-  // ============================================================
-  // EFFECTS
-  // ============================================================
+  /* -----------------------------------------------------------
+     DEPARTMENT CHANGE
+  ----------------------------------------------------------- */
 
   useEffect(() => {
     loadItems(department);
 
     setSelectedItemId("");
     setPackSize("");
-  }, [
-    department,
-    loadItems,
-  ]);
+  }, [department, loadItems]);
+
+  /* -----------------------------------------------------------
+     LOAD STOCK ENTRIES
+  ----------------------------------------------------------- */
 
   useEffect(() => {
     loadEntries();
   }, [loadEntries]);
 
+  /* -----------------------------------------------------------
+     LOAD NEVER ENTERED ITEMS
+  ----------------------------------------------------------- */
+
   useEffect(() => {
     loadNeverEnteredItems();
   }, [loadNeverEnteredItems]);
+
+  /* -----------------------------------------------------------
+     LOAD METADATA
+  ----------------------------------------------------------- */
 
   useEffect(() => {
     loadMeta();
   }, [loadMeta]);
 
-  // ============================================================
-  // ITEM OPTIONS
-  // ============================================================
+  /* -----------------------------------------------------------
+     ITEM OPTIONS
+  ----------------------------------------------------------- */
 
   const opts = useMemo(
     () =>
       items.map((i) => ({
         value: i.id,
         label: i.name,
-        meta: `Pack: ${i.pack_size}`,
-        pack: i.pack_size,
+        meta: `Pack: ${i.pack_size || ""}`,
+        pack: i.pack_size || "",
         name: i.name,
       })),
     [items]
   );
 
-  // ============================================================
-  // NEVER STOCKED SEARCH
-  // ============================================================
-
-  const filteredNeverEnteredItems = useMemo(() => {
-    const q = neverEnteredSearch
-      .trim()
-      .toLowerCase();
-
-    if (!q) {
-      return neverEnteredItems;
-    }
-
-    return neverEnteredItems.filter((item) => {
-      return (
-        String(item.item_name || "")
-          .toLowerCase()
-          .includes(q) ||
-        String(item.pack_size || "")
-          .toLowerCase()
-          .includes(q) ||
-        String(item.department || "")
-          .toLowerCase()
-          .includes(q)
-      );
-    });
-  }, [
-    neverEnteredItems,
-    neverEnteredSearch,
-  ]);
-
-  // ============================================================
-  // ITEM SELECTION
-  // ============================================================
+  /* -----------------------------------------------------------
+     ITEM SELECTION
+  ----------------------------------------------------------- */
 
   const onItemPick = (val, opt) => {
     setSelectedItemId(val);
-
-    setPackSize(
-      opt?.pack || ""
-    );
+    setPackSize(opt?.pack || "");
   };
 
-  // ============================================================
-  // SUBMIT STOCK ENTRY
-  // ============================================================
+  /* -----------------------------------------------------------
+     RECORD STOCK ENTRY
+     IMPORTANT:
+     Backend route is POST /stock/batch
+  ----------------------------------------------------------- */
 
   const submit = async (e) => {
     e.preventDefault();
 
-    const item = items.find(
-      (i) => i.id === selectedItemId
-    );
+    const item = items.find((i) => i.id === selectedItemId);
 
     if (!item) {
-      return toast.error(
-        "Select an item"
-      );
+      toast.error("Select an item");
+      return;
     }
 
-    if (
-      !qty ||
-      Number(qty) <= 0
-    ) {
-      return toast.error(
-        "Enter quantity"
-      );
+    if (!qty || Number(qty) <= 0) {
+      toast.error("Enter quantity");
+      return;
+    }
+
+    if (!receiptDate) {
+      toast.error("Enter receipt date");
+      return;
     }
 
     if (!expiry) {
-      return toast.error(
-        "Enter expiry date"
-      );
+      toast.error("Enter expiry date");
+      return;
     }
 
+    setLoading(true);
+
     try {
-      await api.post("/stock", {
-        item_id: item.id,
-        department,
-        item_name: item.name,
-        pack_size:
-          packSize ||
-          item.pack_size,
-        quantity: Number(qty),
-        receipt_date: receiptDate,
-        lot_number: lotNumber,
-        expiry_date: expiry,
-        manufacturer,
-        supplier,
-        program,
+      /*
+       * IMPORTANT FIX:
+       *
+       * Backend expects:
+       * POST /api/stock/batch
+       *
+       * Body:
+       * {
+       *   items: [
+       *     {
+       *       ...
+       *     }
+       *   ]
+       * }
+       */
+
+      await api.post("/stock/batch", {
+        items: [
+          {
+            item_id: item.id,
+            department,
+            item_name: item.name,
+            pack_size: packSize || item.pack_size || "",
+            quantity: Number(qty),
+            receipt_date: receiptDate,
+            lot_number: lotNumber,
+            expiry_date: expiry,
+            manufacturer,
+            supplier,
+            program,
+          },
+        ],
       });
 
-      toast.success(
-        "Stock entry recorded"
-      );
+      toast.success("Stock entry recorded successfully");
 
+      /* Clear entry fields */
+
+      setSelectedItemId("");
+      setPackSize("");
       setQty("");
       setLotNumber("");
       setExpiry("");
+      setManufacturer("");
+      setSupplier("");
+      setProgram("");
+      setReceiptDate(todayISO());
+
+      /* Refresh stock table */
 
       await loadEntries();
 
+      /* Refresh never-entered list */
+
       await loadNeverEnteredItems();
+
+      /* Refresh metadata */
 
       await loadMeta();
     } catch (err) {
+      console.error("Stock entry error:", err);
+
       toast.error(
-        formatApiError(
-          err.response?.data?.detail
-        ) ||
+        formatApiError(err.response?.data?.detail) ||
+          err.response?.data?.message ||
           err.message ||
           "Failed to record stock entry"
       );
+    } finally {
+      setLoading(false);
     }
   };
 
-  // ============================================================
-  // DELETE STOCK ENTRY
-  // ============================================================
+  /* -----------------------------------------------------------
+     DELETE STOCK ENTRY
+  ----------------------------------------------------------- */
 
   const del = async (id) => {
     try {
-      await api.delete(
-        `/stock/${id}`
-      );
+      await api.delete(`/stock/${id}`);
 
       await loadEntries();
-
       await loadNeverEnteredItems();
 
-      toast.success(
-        "Deleted"
-      );
+      toast.success("Stock entry deleted");
     } catch (err) {
       toast.error(
-        formatApiError(
-          err.response?.data?.detail
-        ) ||
+        formatApiError(err.response?.data?.detail) ||
           err.message ||
           "Failed to delete stock entry"
       );
     }
   };
 
-  // ============================================================
-  // RENDER
-  // ============================================================
+  /* -----------------------------------------------------------
+     RENDER
+  ----------------------------------------------------------- */
 
   return (
     <>
       <PageHeader
         title="Stock Entry"
-        subtitle="Record received stock across departments"
+        description="Record laboratory stock receipts and view stock history."
       />
 
       <PageBody>
+        {/* =====================================================
+            DEPARTMENT
+        ===================================================== */}
 
-        {/* ======================================================
-            STOCK ENTRY FORM
-        ====================================================== */}
+        <div className="mb-6">
+          <Label className="mb-2 block">Department</Label>
 
-        <Card className="p-5">
-          <form
-            onSubmit={submit}
-            className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4"
+          <Select
+            value={department}
+            onValueChange={(value) => setDepartment(value)}
           >
+            <SelectTrigger className="w-full md:w-[250px]">
+              <SelectValue placeholder="Select department" />
+            </SelectTrigger>
 
-            {/* Department */}
+            <SelectContent>
+              {DEPARTMENTS.map((dept) => (
+                <SelectItem key={dept} value={dept}>
+                  {dept}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
 
-            <div>
-              <Label>
-                Department
-              </Label>
-
-              <Select
-                value={department}
-                onValueChange={
-                  setDepartment
-                }
-              >
-                <SelectTrigger
-                  data-testid="se-department"
-                >
-                  <SelectValue />
-                </SelectTrigger>
-
-                <SelectContent>
-                  {DEPARTMENTS.map(
-                    (d) => (
-                      <SelectItem
-                        key={d}
-                        value={d}
-                      >
-                        {d}
-                      </SelectItem>
-                    )
-                  )}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Item */}
-
-            <div className="md:col-span-2">
-              <Label>
-                Item name
-              </Label>
-
-              <Combobox
-                value={
-                  selectedItemId
-                }
-                onChange={
-                  onItemPick
-                }
-                options={opts}
-                placeholder={
-                  items.length
-                    ? "Search item…"
-                    : `No items in ${department}. Add via Items page.`
-                }
-                testid="se-item"
-              />
-            </div>
-
-            {/* Pack size */}
-
-            <div>
-              <Label>
-                Pack size
-              </Label>
-
-              <Input
-                data-testid="se-pack"
-                value={packSize}
-                onChange={(e) =>
-                  setPackSize(
-                    e.target.value
-                  )
-                }
-              />
-            </div>
-
-            {/* Quantity */}
-
-            <div>
-              <Label>
-                Quantity received
-              </Label>
-
-              <Input
-                data-testid="se-qty"
-                type="number"
-                min="1"
-                value={qty}
-                onChange={(e) =>
-                  setQty(
-                    e.target.value
-                  )
-                }
-              />
-            </div>
-
-            {/* Receipt date */}
-
-            <div>
-              <Label>
-                Date of receipt
-              </Label>
-
-              <Input
-                data-testid="se-receipt"
-                type="date"
-                value={
-                  receiptDate
-                }
-                onChange={(e) =>
-                  setReceiptDate(
-                    e.target.value
-                  )
-                }
-              />
-            </div>
-
-            {/* Lot */}
-
-            <div>
-              <Label>
-                Lot number
-              </Label>
-
-              <Input
-                data-testid="se-lot"
-                value={lotNumber}
-                onChange={(e) =>
-                  setLotNumber(
-                    e.target.value
-                  )
-                }
-              />
-            </div>
-
-            {/* Expiry */}
-
-            <div>
-              <Label>
-                Date of expiry
-              </Label>
-
-              <Input
-                data-testid="se-expiry"
-                type="date"
-                value={expiry}
-                onChange={(e) =>
-                  setExpiry(
-                    e.target.value
-                  )
-                }
-              />
-            </div>
-
-            {/* Manufacturer */}
-
-            <div>
-              <Label>
-                Manufacturer
-              </Label>
-
-              <AutoInput
-                id="mfr"
-                testid="se-mfr"
-                value={
-                  manufacturer
-                }
-                onChange={
-                  setManufacturer
-                }
-                options={
-                  meta.manufacturers
-                }
-              />
-            </div>
-
-            {/* Supplier */}
-
-            <div>
-              <Label>
-                Supplier
-              </Label>
-
-              <AutoInput
-                id="sup"
-                testid="se-sup"
-                value={supplier}
-                onChange={
-                  setSupplier
-                }
-                options={
-                  meta.suppliers
-                }
-              />
-            </div>
-
-            {/* Program */}
-
-            <div>
-              <Label>
-                Program
-              </Label>
-
-              <AutoInput
-                id="prg"
-                testid="se-prog"
-                value={program}
-                onChange={
-                  setProgram
-                }
-                options={
-                  meta.programs
-                }
-              />
-            </div>
-
-            {/* Submit */}
-
-            <div className="flex items-end">
-              <Button
-                type="submit"
-                data-testid="se-submit"
-                className="w-full bg-indigo-950 hover:bg-indigo-900"
-              >
-                Record Entry
-              </Button>
-            </div>
-
-          </form>
-        </Card>
-
-        {/* ======================================================
+        {/* =====================================================
             TABS
-        ====================================================== */}
+        ===================================================== */}
 
-        <div className="flex items-center gap-2 border-b border-slate-200 mt-6">
+        <div className="flex flex-wrap gap-2 mb-6 border-b pb-3">
+          <Button
+            type="button"
+            variant={activeTab === "entry" ? "default" : "outline"}
+            onClick={() => setActiveTab("entry")}
+          >
+            Stock Entry
+          </Button>
 
           <Button
             type="button"
-            variant={
-              activeTab === "entries"
-                ? "default"
-                : "outline"
-            }
-            onClick={() =>
-              setActiveTab(
-                "entries"
-              )
-            }
-            className={
-              activeTab === "entries"
-                ? "bg-indigo-950 hover:bg-indigo-900"
-                : ""
-            }
+            variant={activeTab === "entries" ? "default" : "outline"}
+            onClick={() => setActiveTab("entries")}
           >
             Stock Entries
           </Button>
@@ -747,448 +482,450 @@ export default function StockEntry() {
           <Button
             type="button"
             variant={
-              activeTab ===
-              "never-entered"
-                ? "default"
-                : "outline"
+              activeTab === "never-entered" ? "default" : "outline"
             }
-            onClick={() =>
-              setActiveTab(
-                "never-entered"
-              )
-            }
-            className={
-              activeTab ===
-              "never-entered"
-                ? "bg-indigo-950 hover:bg-indigo-900"
-                : ""
-            }
+            onClick={() => {
+              setActiveTab("never-entered");
+              loadNeverEnteredItems();
+            }}
           >
             Never Stock Entered
           </Button>
-
         </div>
 
-        {/* ======================================================
+        {/* =====================================================
+            STOCK ENTRY FORM
+        ===================================================== */}
+
+        {activeTab === "entry" && (
+          <Card className="p-6 mb-6">
+            <form onSubmit={submit}>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                {/* ITEM */}
+
+                <div>
+                  <Label className="mb-2 block">Item</Label>
+
+                  <Combobox
+                    options={opts}
+                    value={selectedItemId}
+                    onValueChange={onItemPick}
+                    placeholder="Select item"
+                    searchPlaceholder="Search item..."
+                  />
+                </div>
+
+                {/* PACK SIZE */}
+
+                <div>
+                  <Label className="mb-2 block">Pack Size</Label>
+
+                  <Input
+                    value={packSize}
+                    onChange={(e) => setPackSize(e.target.value)}
+                    placeholder="Pack size"
+                  />
+                </div>
+
+                {/* QUANTITY */}
+
+                <div>
+                  <Label className="mb-2 block">Quantity</Label>
+
+                  <Input
+                    type="number"
+                    min="1"
+                    value={qty}
+                    onChange={(e) => setQty(e.target.value)}
+                    placeholder="Enter quantity"
+                  />
+                </div>
+
+                {/* RECEIPT DATE */}
+
+                <div>
+                  <Label className="mb-2 block">Receipt Date</Label>
+
+                  <Input
+                    type="date"
+                    value={receiptDate}
+                    onChange={(e) => setReceiptDate(e.target.value)}
+                  />
+                </div>
+
+                {/* LOT NUMBER */}
+
+                <div>
+                  <Label className="mb-2 block">Lot Number</Label>
+
+                  <Input
+                    value={lotNumber}
+                    onChange={(e) => setLotNumber(e.target.value)}
+                    placeholder="Lot number"
+                  />
+                </div>
+
+                {/* EXPIRY */}
+
+                <div>
+                  <Label className="mb-2 block">Expiry Date</Label>
+
+                  <Input
+                    type="date"
+                    value={expiry}
+                    onChange={(e) => setExpiry(e.target.value)}
+                  />
+                </div>
+
+                {/* MANUFACTURER */}
+
+                <div>
+                  <Label className="mb-2 block">Manufacturer</Label>
+
+                  <AutoInput
+                    value={manufacturer}
+                    onChange={setManufacturer}
+                    options={meta.manufacturers}
+                    placeholder="Manufacturer"
+                  />
+                </div>
+
+                {/* SUPPLIER */}
+
+                <div>
+                  <Label className="mb-2 block">Supplier</Label>
+
+                  <AutoInput
+                    value={supplier}
+                    onChange={setSupplier}
+                    options={meta.suppliers}
+                    placeholder="Supplier"
+                  />
+                </div>
+
+                {/* PROGRAM */}
+
+                <div>
+                  <Label className="mb-2 block">Program</Label>
+
+                  <AutoInput
+                    value={program}
+                    onChange={setProgram}
+                    options={meta.programs}
+                    placeholder="Program"
+                  />
+                </div>
+              </div>
+
+              <div className="mt-6">
+                <Button
+                  type="submit"
+                  disabled={loading}
+                >
+                  {loading ? "Recording..." : "Record Stock Entry"}
+                </Button>
+              </div>
+            </form>
+          </Card>
+        )}
+
+        {/* =====================================================
             STOCK ENTRIES TAB
-        ====================================================== */}
+        ===================================================== */}
 
         {activeTab === "entries" && (
-          <Card>
+          <Card className="p-6">
+            <div className="flex flex-col lg:flex-row lg:items-end gap-4 mb-6">
+              {/* SEARCH */}
 
-            <div className="p-3 border-b border-slate-200 flex flex-wrap items-center gap-2">
+              <div className="flex-1">
+                <Label className="mb-2 block">Search</Label>
 
-              {/* Search */}
+                <Input
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Search item, lot, manufacturer, supplier..."
+                />
+              </div>
 
-              <Input
-                placeholder="Search item…"
-                className="max-w-xs"
-                value={search}
-                onChange={(e) =>
-                  setSearch(
-                    e.target.value
-                  )
-                }
-                data-testid="se-list-search"
-              />
+              {/* PROGRAM FILTER */}
 
-              {/* Program filter */}
+              <div className="w-full lg:w-[220px]">
+                <Label className="mb-2 block">Program</Label>
 
-              <Select
-                value={
-                  progFilter
-                }
-                onValueChange={
-                  setProgFilter
-                }
-              >
-                <SelectTrigger
-                  className="w-44"
-                  data-testid="se-prog-filter"
+                <Select
+                  value={progFilter}
+                  onValueChange={setProgFilter}
                 >
-                  <SelectValue placeholder="All programs" />
-                </SelectTrigger>
+                  <SelectTrigger>
+                    <SelectValue placeholder="All programs" />
+                  </SelectTrigger>
 
-                <SelectContent>
+                  <SelectContent>
+                    <SelectItem value="all">
+                      All programs
+                    </SelectItem>
 
-                  <SelectItem value="all">
-                    All programs
-                  </SelectItem>
-
-                  {meta.programs.map(
-                    (p) => (
-                      <SelectItem
-                        key={p}
-                        value={p}
-                      >
+                    {meta.programs.map((p) => (
+                      <SelectItem key={p} value={p}>
                         {p}
                       </SelectItem>
-                    )
-                  )}
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
-                </SelectContent>
-              </Select>
+              {/* FROM */}
 
-              {/* Date filter */}
-
-              <div className="flex items-center gap-1 text-xs text-slate-500">
-
-                <span>
-                  From
-                </span>
+              <div>
+                <Label className="mb-2 block">From</Label>
 
                 <Input
                   type="date"
                   value={from}
-                  onChange={(e) =>
-                    setFrom(
-                      e.target.value
-                    )
-                  }
-                  className="h-8"
-                  data-testid="se-from"
+                  onChange={(e) => setFrom(e.target.value)}
                 />
+              </div>
 
-                <span>
-                  To
-                </span>
+              {/* TO */}
+
+              <div>
+                <Label className="mb-2 block">To</Label>
 
                 <Input
                   type="date"
                   value={to}
-                  onChange={(e) =>
-                    setTo(
-                      e.target.value
-                    )
-                  }
-                  className="h-8"
-                  data-testid="se-to"
+                  onChange={(e) => setTo(e.target.value)}
                 />
-
               </div>
 
-              {/* Export */}
+              {/* EXPORT */}
 
-              <div className="ml-auto flex items-center gap-2">
-
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={
-                    exportToExcel
-                  }
-                >
-                  Export Excel
-                </Button>
-
-                <div className="text-xs text-slate-500">
-                  {entries.length}{" "}
-                  entries
-                </div>
-
-              </div>
-
+              <Button
+                type="button"
+                variant="outline"
+                onClick={exportToExcel}
+              >
+                Export Excel
+              </Button>
             </div>
 
-            {/* Stock table */}
+            {/* TABLE */}
 
             <div className="overflow-x-auto">
-
-              <table className="data-table w-full">
-
+              <table className="w-full text-sm border-collapse">
                 <thead>
-                  <tr>
-                    <th>Date</th>
-                    <th>Dept</th>
-                    <th>Item</th>
-                    <th>Pack</th>
-                    <th>Qty</th>
-                    <th>Lot #</th>
-                    <th>Expiry</th>
-                    <th>Manufacturer</th>
-                    <th>Supplier</th>
-                    <th>Program</th>
-                    <th></th>
+                  <tr className="border-b bg-muted/50">
+                    <th className="text-left p-3">Date</th>
+                    <th className="text-left p-3">Item</th>
+                    <th className="text-left p-3">Pack Size</th>
+                    <th className="text-left p-3">Quantity</th>
+                    <th className="text-left p-3">Lot No.</th>
+                    <th className="text-left p-3">Expiry</th>
+                    <th className="text-left p-3">Manufacturer</th>
+                    <th className="text-left p-3">Supplier</th>
+                    <th className="text-left p-3">Program</th>
+                    <th className="text-left p-3">Action</th>
                   </tr>
-                </thead>
-
-                <tbody data-testid="se-list-body">
-
-                  {entries.map(
-                    (e) => (
-                      <tr key={e.id}>
-
-                        <td>
-                          {fmtDate(
-                            e.receipt_date
-                          )}
-                        </td>
-
-                        <td>
-                          {e.department}
-                        </td>
-
-                        <td className="font-medium text-slate-900">
-                          {e.item_name}
-                        </td>
-
-                        <td>
-                          {e.pack_size}
-                        </td>
-
-                        <td className="tabular-nums">
-                          {e.quantity}
-                        </td>
-
-                        <td>
-                          {e.lot_number}
-                        </td>
-
-                        <td>
-                          {fmtDate(
-                            e.expiry_date
-                          )}
-                        </td>
-
-                        <td>
-                          {e.manufacturer}
-                        </td>
-
-                        <td>
-                          {e.supplier}
-                        </td>
-
-                        <td>
-                          {e.program}
-                        </td>
-
-                        <td>
-                          {user?.role ===
-                            "admin" && (
-                            <ConfirmDelete
-                              testid={`se-del-${e.id}`}
-                              title="Delete stock entry?"
-                              description={`${e.item_name} · Lot ${e.lot_number} · Qty ${e.quantity}`}
-                              onConfirm={() =>
-                                del(
-                                  e.id
-                                )
-                              }
-                            />
-                          )}
-                        </td>
-
-                      </tr>
-                    )
-                  )}
-
-                  {entries.length ===
-                    0 && (
-                    <tr>
-                      <td
-                        colSpan={11}
-                        className="text-center py-8 text-slate-400"
-                      >
-                        No entries
-                        recorded.
-                      </td>
-                    </tr>
-                  )}
-
-                </tbody>
-
-              </table>
-
-            </div>
-
-          </Card>
-        )}
-
-        {/* ======================================================
-            NEVER STOCK ENTERED TAB
-        ====================================================== */}
-
-        {activeTab ===
-          "never-entered" && (
-          <Card>
-
-            {/* Header / controls */}
-
-            <div className="p-4 border-b border-slate-200 flex flex-wrap items-center gap-3">
-
-              <div>
-                <h3 className="font-semibold text-slate-900">
-                  Items without stock entry
-                </h3>
-
-                <p className="text-xs text-slate-500 mt-1">
-                  Items in the Items master
-                  that have never been
-                  recorded in Stock Entry.
-                </p>
-              </div>
-
-              <div className="ml-auto flex items-center gap-2">
-
-                <Input
-                  placeholder="Search item…"
-                  className="w-56"
-                  value={
-                    neverEnteredSearch
-                  }
-                  onChange={(e) =>
-                    setNeverEnteredSearch(
-                      e.target.value
-                    )
-                  }
-                />
-
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={
-                    loadNeverEnteredItems
-                  }
-                >
-                  Refresh
-                </Button>
-
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={
-                    exportNeverEnteredToExcel
-                  }
-                >
-                  Export Excel
-                </Button>
-
-              </div>
-
-            </div>
-
-            {/* Department information */}
-
-            <div className="px-4 py-3 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
-
-              <div className="text-sm text-slate-600">
-
-                Department:
-                <span className="font-semibold text-slate-900 ml-1">
-                  {department}
-                </span>
-
-              </div>
-
-              <div className="text-sm text-slate-600">
-
-                Items without stock:
-                <span className="font-semibold text-red-600 ml-1">
-                  {
-                    filteredNeverEnteredItems.length
-                  }
-                </span>
-
-              </div>
-
-            </div>
-
-            {/* Never stocked table */}
-
-            <div className="overflow-x-auto">
-
-              <table className="data-table w-full">
-
-                <thead>
-
-                  <tr>
-                    <th>Sl. No.</th>
-                    <th>Department</th>
-                    <th>Item Name</th>
-                    <th>Pack Size</th>
-                  </tr>
-
                 </thead>
 
                 <tbody>
-
-                  {filteredNeverEnteredItems.map(
-                    (item, index) => (
-                      <tr
-                        key={
-                          item.id
-                        }
-                      >
-
-                        <td>
-                          {index + 1}
-                        </td>
-
-                        <td>
-                          {item.department}
-                        </td>
-
-                        <td className="font-medium text-slate-900">
-                          {
-                            item.item_name
-                          }
-                        </td>
-
-                        <td>
-                          {
-                            item.pack_size
-                          }
-                        </td>
-
-                      </tr>
-                    )
-                  )}
-
-                  {filteredNeverEnteredItems.length ===
-                    0 && (
+                  {entries.length === 0 ? (
                     <tr>
-
                       <td
-                        colSpan={4}
-                        className="text-center py-10"
+                        colSpan="10"
+                        className="p-6 text-center text-muted-foreground"
                       >
-
-                        {neverEnteredItems.length ===
-                        0 ? (
-                          <div>
-                            <div className="text-slate-500 font-medium">
-                              No items found
-                            </div>
-
-                            <div className="text-xs text-slate-400 mt-1">
-                              All items in{" "}
-                              {department}{" "}
-                              have already
-                              had a stock
-                              entry.
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="text-slate-500">
-                            No items match
-                            your search.
-                          </div>
-                        )}
-
+                        No stock entries found.
                       </td>
-
                     </tr>
+                  ) : (
+                    entries.map((entry) => (
+                      <tr
+                        key={entry.id}
+                        className="border-b hover:bg-muted/30"
+                      >
+                        <td className="p-3">
+                          {fmtDate(entry.receipt_date)}
+                        </td>
+
+                        <td className="p-3">
+                          {entry.item_name}
+                        </td>
+
+                        <td className="p-3">
+                          {entry.pack_size}
+                        </td>
+
+                        <td className="p-3">
+                          {entry.quantity}
+                        </td>
+
+                        <td className="p-3">
+                          {entry.lot_number}
+                        </td>
+
+                        <td className="p-3">
+                          {fmtDate(entry.expiry_date)}
+                        </td>
+
+                        <td className="p-3">
+                          {entry.manufacturer}
+                        </td>
+
+                        <td className="p-3">
+                          {entry.supplier}
+                        </td>
+
+                        <td className="p-3">
+                          {entry.program}
+                        </td>
+
+                        <td className="p-3">
+                          <ConfirmDelete
+                            title="Delete stock entry?"
+                            description="This stock entry will be permanently deleted."
+                            onConfirm={() => del(entry.id)}
+                          />
+                        </td>
+                      </tr>
+                    ))
                   )}
-
                 </tbody>
-
               </table>
-
             </div>
-
           </Card>
         )}
 
+        {/* =====================================================
+            NEVER STOCK ENTERED TAB
+        ===================================================== */}
+
+        {activeTab === "never-entered" && (
+          <Card className="p-6">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
+              <div>
+                <h2 className="text-lg font-semibold">
+                  Items Never Stock Entered
+                </h2>
+
+                <p className="text-sm text-muted-foreground mt-1">
+                  Master-list items in {department} that have never had
+                  any stock entry recorded.
+                </p>
+              </div>
+
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={loadNeverEnteredItems}
+                  disabled={loadingNeverEntered}
+                >
+                  {loadingNeverEntered ? "Refreshing..." : "Refresh"}
+                </Button>
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={exportNeverStocked}
+                >
+                  Export Excel
+                </Button>
+              </div>
+            </div>
+
+            {/* SUMMARY */}
+
+            <div className="mb-5 rounded-lg border p-4 bg-muted/20">
+              <div className="text-sm text-muted-foreground">
+                Department
+              </div>
+
+              <div className="text-xl font-semibold">
+                {department}
+              </div>
+
+              <div className="mt-2 text-sm">
+                Never stock entered:{" "}
+                <span className="font-semibold">
+                  {neverEnteredItems.length}
+                </span>
+              </div>
+            </div>
+
+            {/* NEVER ENTERED TABLE */}
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm border-collapse">
+                <thead>
+                  <tr className="border-b bg-muted/50">
+                    <th className="text-left p-3">
+                      Sl. No.
+                    </th>
+
+                    <th className="text-left p-3">
+                      Item Name
+                    </th>
+
+                    <th className="text-left p-3">
+                      Pack Size
+                    </th>
+
+                    <th className="text-left p-3">
+                      Department
+                    </th>
+                  </tr>
+                </thead>
+
+                <tbody>
+                  {loadingNeverEntered ? (
+                    <tr>
+                      <td
+                        colSpan="4"
+                        className="p-6 text-center text-muted-foreground"
+                      >
+                        Loading...
+                      </td>
+                    </tr>
+                  ) : neverEnteredItems.length === 0 ? (
+                    <tr>
+                      <td
+                        colSpan="4"
+                        className="p-6 text-center text-muted-foreground"
+                      >
+                        No items without stock entry found.
+                      </td>
+                    </tr>
+                  ) : (
+                    neverEnteredItems.map((item, index) => (
+                      <tr
+                        key={item.id}
+                        className="border-b hover:bg-muted/30"
+                      >
+                        <td className="p-3">
+                          {index + 1}
+                        </td>
+
+                        <td className="p-3 font-medium">
+                          {item.item_name}
+                        </td>
+
+                        <td className="p-3">
+                          {item.pack_size || "-"}
+                        </td>
+
+                        <td className="p-3">
+                          {item.department}
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+        )}
       </PageBody>
     </>
   );
