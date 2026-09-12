@@ -242,20 +242,70 @@ export default function StockEntry() {
         </Card>
 
         <Card>
-          <div className="p-3 border-b border-slate-200 flex flex-wrap items-center gap-2">
-            <Input placeholder="Search item…" className="max-w-xs" value={search} onChange={(e) => setSearch(e.target.value)} data-testid="se-list-search" />
-            <Select value={progFilter} onValueChange={setProgFilter}>
-              <SelectTrigger className="w-44" data-testid="se-prog-filter"><SelectValue placeholder="All programs" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All programs</SelectItem>
-                {meta.programs.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}
-              </SelectContent>
-            </Select>
-            <div className="flex items-center gap-1 text-xs text-slate-500">
-              From <Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="h-8" data-testid="se-from" />
-              To <Input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="h-8" data-testid="se-to" />
-            </div>
-           <div className="ml-auto flex items-center gap-2">
+         <div className="p-3 border-b border-slate-200 flex flex-wrap items-center gap-2">
+  <Input
+    placeholder="Search item…"
+    className="max-w-xs"
+    value={search}
+    onChange={(e) => setSearch(e.target.value)}
+    data-testid="se-list-search"
+  />
+
+  <Select value={progFilter} onValueChange={setProgFilter}>
+    <SelectTrigger
+      className="w-44"
+      data-testid="se-prog-filter"
+    >
+      <SelectValue placeholder="All programs" />
+    </SelectTrigger>
+
+    <SelectContent>
+      <SelectItem value="all">All programs</SelectItem>
+
+      {meta.programs.map((p) => (
+        <SelectItem key={p} value={p}>
+          {p}
+        </SelectItem>
+      ))}
+    </SelectContent>
+  </Select>
+
+  <div className="flex items-center gap-1 text-xs text-slate-500">
+    From
+
+    <Input
+      type="date"
+      value={from}
+      onChange={(e) => setFrom(e.target.value)}
+      className="h-8"
+      data-testid="se-from"
+    />
+
+    To
+
+    <Input
+      type="date"
+      value={to}
+      onChange={(e) => setTo(e.target.value)}
+      className="h-8"
+      data-testid="se-to"
+    />
+  </div>
+
+  <div className="ml-auto flex items-center gap-2">
+    <Button
+      type="button"
+      variant="outline"
+      onClick={exportToExcel}
+    >
+      Export Excel
+    </Button>
+
+    <div className="text-xs text-slate-500">
+      {entries.length} entries
+    </div>
+  </div>
+</div>
   <Button
     onClick={exportToExcel}
     variant="outline"
