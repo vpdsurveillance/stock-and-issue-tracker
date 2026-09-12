@@ -307,7 +307,50 @@ async def del_stock(sid: str, user: dict = Depends(require_admin)):
     if r.deleted_count == 0:
         raise HTTPException(404, "Not found")
     return {"ok": True}
+# Before creating issue
 
+received = await db.stock_entries.aggregate([
+    {
+        "$match": {
+            "item_id": body.item_id,
+            "lot_number": body.lot_number,
+            "expiry_date": _iso(_parse_date(body.expiry_date))
+        }
+    },
+    {
+        "$group": {
+            "_id": None,
+            "qty": {"$sum": "$quantity"}
+        }
+    }
+]).to_list(1)
+
+issued = await db.issues.aggregate([
+    {
+        "$match": {
+            "item_id": body.item_id,
+            "lot_number": body.lot_number,
+            "expiry_date": _iso(_parse_date(body.expiry_date))
+        }
+    },
+    {
+        "$group": {
+            "_id": None,
+            "qty": {"$sum": "$quantity"}
+        }
+    }
+]).to_list(1)
+
+received_qty = received[0]["qty"] if received else 0
+issued_qty = issued[0]["qty"] if issued else 0
+
+available = received_qty - issued_qty
+
+if available < body.quantity:
+    raise HTTPException(
+        status_code=400,
+        detail=f"Stock not available. Available balance: {available}"
+    )
 
 # --- Issues ---
 @api.post("/issues")
