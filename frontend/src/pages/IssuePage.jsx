@@ -23,30 +23,7 @@ const emptyLine = () => ({
   expiry_date: "", lot_number: "",
   quantity: "",
 });
-const exportToExcel = () => {
-  const exportData = issues.map((i) => ({
-    Issue_Date: i.issue_date,
-    Department: i.department,
-    Item_Name: i.item_name,
-    Pack_Size: i.pack_size,
-    Quantity: i.quantity,
-    Section: i.section,
-    Program: i.program,
-    Lot_Number: i.lot_number,
-    Expiry_Date: i.expiry_date,
-    Issued_By: i.issued_by
-  }));
-
-  const worksheet = XLSX.utils.json_to_sheet(exportData);
-  const workbook = XLSX.utils.book_new();
-
-  XLSX.utils.book_append_sheet(
-    workbook,
-    worksheet,
-    "Issue_Transactions"
-  );
-
-  XLSX.writeFile(
+writeFile(
     workbook,
     `Issue_Transactions_${new Date().toISOString().slice(0,10)}.xlsx`
   );
