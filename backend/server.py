@@ -503,7 +503,61 @@ async def meta_field(
 # ============================================================
 # STOCK ENTRIES
 # ============================================================
+# ============================================================
+# STOCK ENTRIES
+# ============================================================
 
+# ============================================================
+# SINGLE STOCK ENTRY
+# ============================================================
+
+@api.post("/stock")
+async def create_stock(
+    body: StockEntryIn,
+    user: dict = Depends(get_current_user)
+):
+
+    item = await db.items.find_one({
+        "id": body.item_id
+    })
+
+    if not item:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Item not found: {body.item_name}"
+        )
+
+    doc = body.model_dump()
+
+    doc["id"] = str(uuid.uuid4())
+
+    doc["receipt_date"] = _iso(
+        _parse_date(doc["receipt_date"])
+    )
+
+    doc["expiry_date"] = _iso(
+        _parse_date(doc["expiry_date"])
+    )
+
+    doc["created_at"] = _iso(
+        datetime.now(timezone.utc)
+    )
+
+    doc["created_by"] = user["email"]
+
+    await db.stock_entries.insert_one(doc)
+
+    doc.pop("_id", None)
+
+    return doc
+
+
+# ============================================================
+# BATCH STOCK ENTRY
+# ============================================================
+
+@api.post("/stock/batch")
+async def create_stock_batch(
 @api.post("/stock/batch")
 async def create_stock_batch(...):
     ...
