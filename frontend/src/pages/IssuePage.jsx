@@ -22,9 +22,7 @@ const emptyLine = () => ({
   batch_key: "",
   expiry_date: "", lot_number: "",
   quantity: "",});
-writeFile(
-    workbook,
-    `Issue_Transactions_${new Date().toISOString().slice(0,10)}.xlsx`);};
+
 
 
 const exportToExcel = () => {
