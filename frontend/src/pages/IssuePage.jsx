@@ -52,7 +52,7 @@ const exportToExcel = () => {
   );
 };
 
-import * as XLSX from "xlsx";
+
 const exportToExcel = () => {
   const exportData = issues.map((r) => ({
     Date: r.issue_date,
