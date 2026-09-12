@@ -44,6 +44,33 @@ export default function IssuePage() {
   const [lines, setLines] = useState([emptyLine()]);
 
   const [issues, setIssues] = useState([]);
+  const exportToExcel = () => {
+  const exportData = issues.map((r) => ({
+    Date: r.issue_date,
+    Department: r.department,
+    Item_Name: r.item_name,
+    Pack_Size: r.pack_size,
+    Lot_Number: r.lot_number,
+    Expiry_Date: r.expiry_date,
+    Quantity: r.quantity,
+    Section: r.issued_section,
+    Program: r.program
+  }));
+
+  const worksheet = XLSX.utils.json_to_sheet(exportData);
+  const workbook = XLSX.utils.book_new();
+
+  XLSX.utils.book_append_sheet(
+    workbook,
+    worksheet,
+    "Issue_Transactions"
+  );
+
+  XLSX.writeFile(
+    workbook,
+    `Issue_Transactions_${new Date().toISOString().slice(0, 10)}.xlsx`
+  );
+};
   const [search, setSearch] = useState("");
   const [progFilter, setProgFilter] = useState("all");
   const [sectionFilter, setSectionFilter] = useState("all");
