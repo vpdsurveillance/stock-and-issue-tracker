@@ -25,10 +25,15 @@ function todayISO() {
 export default function StockEntry() {
   const { user } = useAuth();
 
+  // ============================================================
+  // MAIN STATE
+  // ============================================================
+
   const [department, setDepartment] = useState("MDS");
 
   const [items, setItems] = useState([]);
   const [selectedItemId, setSelectedItemId] = useState("");
+
   const [packSize, setPackSize] = useState("");
   const [qty, setQty] = useState("");
   const [receiptDate, setReceiptDate] = useState(todayISO());
@@ -40,9 +45,19 @@ export default function StockEntry() {
 
   const [entries, setEntries] = useState([]);
 
-  const [neverEnteredItems, setNeverEnteredItems] = useState([]);
+  // ============================================================
+  // NEVER STOCK ENTERED
+  // ============================================================
 
+  const [neverEnteredItems, setNeverEnteredItems] = useState([]);
+  const [neverEnteredSearch, setNeverEnteredSearch] = useState("");
+
+  // Active tab
   const [activeTab, setActiveTab] = useState("entries");
+
+  // ============================================================
+  // METADATA
+  // ============================================================
 
   const [meta, setMeta] = useState({
     manufacturers: [],
@@ -50,14 +65,18 @@ export default function StockEntry() {
     programs: [],
   });
 
+  // ============================================================
+  // STOCK ENTRY FILTERS
+  // ============================================================
+
   const [search, setSearch] = useState("");
   const [progFilter, setProgFilter] = useState("all");
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
 
-  // =========================================================
+  // ============================================================
   // EXPORT STOCK ENTRIES
-  // =========================================================
+  // ============================================================
 
   const exportToExcel = async () => {
     try {
@@ -99,11 +118,11 @@ export default function StockEntry() {
     }
   };
 
-  // =========================================================
-  // EXPORT ITEMS WITHOUT STOCK ENTRY
-  // =========================================================
+  // ============================================================
+  // EXPORT NEVER STOCKED ITEMS
+  // ============================================================
 
-  const exportNeverEnteredItems = async () => {
+  const exportNeverEnteredToExcel = async () => {
     try {
       const response = await api.get("/export/never-stocked", {
         params: {
@@ -122,7 +141,7 @@ export default function StockEntry() {
 
       link.href = url;
 
-      link.download = `Items_Never_Stock_Entered_${department}_${new Date()
+      link.download = `Items_Never_Stocked_${department}_${new Date()
         .toISOString()
         .slice(0, 10)}.xlsx`;
 
@@ -134,18 +153,18 @@ export default function StockEntry() {
 
       window.URL.revokeObjectURL(url);
 
-      toast.success("Items without stock entry exported successfully");
+      toast.success("Never-stocked items exported successfully");
     } catch (err) {
       toast.error(
         formatApiError(err.response?.data?.detail) ||
-          "Failed to export items without stock entry"
+          "Failed to export never-stocked items"
       );
     }
   };
 
-  // =========================================================
-  // LOAD ITEMS
-  // =========================================================
+  // ============================================================
+  // LOAD ITEMS MASTER
+  // ============================================================
 
   const loadItems = useCallback(async (dept) => {
     try {
@@ -164,9 +183,9 @@ export default function StockEntry() {
     }
   }, []);
 
-  // =========================================================
+  // ============================================================
   // LOAD STOCK ENTRIES
-  // =========================================================
+  // ============================================================
 
   const loadEntries = useCallback(async () => {
     try {
@@ -192,32 +211,50 @@ export default function StockEntry() {
           "Failed to load stock entries"
       );
     }
-  }, [department, search, from, to, progFilter]);
+  }, [
+    department,
+    search,
+    from,
+    to,
+    progFilter,
+  ]);
 
-  // =========================================================
-  // LOAD ITEMS NEVER STOCK ENTERED
-  // =========================================================
+  // ============================================================
+  // LOAD ITEMS THAT NEVER HAD STOCK ENTRY
+  // ============================================================
 
   const loadNeverEnteredItems = useCallback(async () => {
     try {
-      const { data } = await api.get("/reports/never-stocked", {
-        params: {
-          department,
-        },
-      });
+      const { data } = await api.get(
+        "/stock/never-entered",
+        {
+          params: {
+            department,
+          },
+        }
+      );
 
-      setNeverEnteredItems(data);
+      setNeverEnteredItems(
+        Array.isArray(data) ? data : []
+      );
     } catch (err) {
+      console.error(
+        "Never-entered items error:",
+        err
+      );
+
       toast.error(
         formatApiError(err.response?.data?.detail) ||
           "Failed to load items without stock entry"
       );
+
+      setNeverEnteredItems([]);
     }
   }, [department]);
 
-  // =========================================================
+  // ============================================================
   // LOAD METADATA
-  // =========================================================
+  // ============================================================
 
   const loadMeta = useCallback(async () => {
     try {
@@ -240,16 +277,19 @@ export default function StockEntry() {
     }
   }, []);
 
-  // =========================================================
+  // ============================================================
   // EFFECTS
-  // =========================================================
+  // ============================================================
 
   useEffect(() => {
     loadItems(department);
 
     setSelectedItemId("");
     setPackSize("");
-  }, [department, loadItems]);
+  }, [
+    department,
+    loadItems,
+  ]);
 
   useEffect(() => {
     loadEntries();
@@ -263,9 +303,9 @@ export default function StockEntry() {
     loadMeta();
   }, [loadMeta]);
 
-  // =========================================================
+  // ============================================================
   // ITEM OPTIONS
-  // =========================================================
+  // ============================================================
 
   const opts = useMemo(
     () =>
@@ -279,18 +319,52 @@ export default function StockEntry() {
     [items]
   );
 
-  // =========================================================
+  // ============================================================
+  // NEVER STOCKED SEARCH
+  // ============================================================
+
+  const filteredNeverEnteredItems = useMemo(() => {
+    const q = neverEnteredSearch
+      .trim()
+      .toLowerCase();
+
+    if (!q) {
+      return neverEnteredItems;
+    }
+
+    return neverEnteredItems.filter((item) => {
+      return (
+        String(item.item_name || "")
+          .toLowerCase()
+          .includes(q) ||
+        String(item.pack_size || "")
+          .toLowerCase()
+          .includes(q) ||
+        String(item.department || "")
+          .toLowerCase()
+          .includes(q)
+      );
+    });
+  }, [
+    neverEnteredItems,
+    neverEnteredSearch,
+  ]);
+
+  // ============================================================
   // ITEM SELECTION
-  // =========================================================
+  // ============================================================
 
   const onItemPick = (val, opt) => {
     setSelectedItemId(val);
-    setPackSize(opt?.pack || "");
+
+    setPackSize(
+      opt?.pack || ""
+    );
   };
 
-  // =========================================================
+  // ============================================================
   // SUBMIT STOCK ENTRY
-  // =========================================================
+  // ============================================================
 
   const submit = async (e) => {
     e.preventDefault();
@@ -300,15 +374,24 @@ export default function StockEntry() {
     );
 
     if (!item) {
-      return toast.error("Select an item");
+      return toast.error(
+        "Select an item"
+      );
     }
 
-    if (!qty || Number(qty) <= 0) {
-      return toast.error("Enter quantity");
+    if (
+      !qty ||
+      Number(qty) <= 0
+    ) {
+      return toast.error(
+        "Enter quantity"
+      );
     }
 
     if (!expiry) {
-      return toast.error("Enter expiry date");
+      return toast.error(
+        "Enter expiry date"
+      );
     }
 
     try {
@@ -316,7 +399,9 @@ export default function StockEntry() {
         item_id: item.id,
         department,
         item_name: item.name,
-        pack_size: packSize || item.pack_size,
+        pack_size:
+          packSize ||
+          item.pack_size,
         quantity: Number(qty),
         receipt_date: receiptDate,
         lot_number: lotNumber,
@@ -326,7 +411,9 @@ export default function StockEntry() {
         program,
       });
 
-      toast.success("Stock entry recorded");
+      toast.success(
+        "Stock entry recorded"
+      );
 
       setQty("");
       setLotNumber("");
@@ -339,38 +426,46 @@ export default function StockEntry() {
       await loadMeta();
     } catch (err) {
       toast.error(
-        formatApiError(err.response?.data?.detail) ||
+        formatApiError(
+          err.response?.data?.detail
+        ) ||
           err.message ||
           "Failed to record stock entry"
       );
     }
   };
 
-  // =========================================================
+  // ============================================================
   // DELETE STOCK ENTRY
-  // =========================================================
+  // ============================================================
 
   const del = async (id) => {
     try {
-      await api.delete(`/stock/${id}`);
+      await api.delete(
+        `/stock/${id}`
+      );
 
       await loadEntries();
 
       await loadNeverEnteredItems();
 
-      toast.success("Deleted");
+      toast.success(
+        "Deleted"
+      );
     } catch (err) {
       toast.error(
-        formatApiError(err.response?.data?.detail) ||
+        formatApiError(
+          err.response?.data?.detail
+        ) ||
           err.message ||
           "Failed to delete stock entry"
       );
     }
   };
 
-  // =========================================================
-  // PAGE
-  // =========================================================
+  // ============================================================
+  // RENDER
+  // ============================================================
 
   return (
     <>
@@ -381,7 +476,7 @@ export default function StockEntry() {
 
       <PageBody>
 
-        {/* =====================================================
+        {/* ======================================================
             STOCK ENTRY FORM
         ====================================================== */}
 
@@ -394,22 +489,33 @@ export default function StockEntry() {
             {/* Department */}
 
             <div>
-              <Label>Department</Label>
+              <Label>
+                Department
+              </Label>
 
               <Select
                 value={department}
-                onValueChange={setDepartment}
+                onValueChange={
+                  setDepartment
+                }
               >
-                <SelectTrigger data-testid="se-department">
+                <SelectTrigger
+                  data-testid="se-department"
+                >
                   <SelectValue />
                 </SelectTrigger>
 
                 <SelectContent>
-                  {DEPARTMENTS.map((d) => (
-                    <SelectItem key={d} value={d}>
-                      {d}
-                    </SelectItem>
-                  ))}
+                  {DEPARTMENTS.map(
+                    (d) => (
+                      <SelectItem
+                        key={d}
+                        value={d}
+                      >
+                        {d}
+                      </SelectItem>
+                    )
+                  )}
                 </SelectContent>
               </Select>
             </div>
@@ -417,11 +523,17 @@ export default function StockEntry() {
             {/* Item */}
 
             <div className="md:col-span-2">
-              <Label>Item name</Label>
+              <Label>
+                Item name
+              </Label>
 
               <Combobox
-                value={selectedItemId}
-                onChange={onItemPick}
+                value={
+                  selectedItemId
+                }
+                onChange={
+                  onItemPick
+                }
                 options={opts}
                 placeholder={
                   items.length
@@ -435,13 +547,17 @@ export default function StockEntry() {
             {/* Pack size */}
 
             <div>
-              <Label>Pack size</Label>
+              <Label>
+                Pack size
+              </Label>
 
               <Input
                 data-testid="se-pack"
                 value={packSize}
                 onChange={(e) =>
-                  setPackSize(e.target.value)
+                  setPackSize(
+                    e.target.value
+                  )
                 }
               />
             </div>
@@ -449,7 +565,9 @@ export default function StockEntry() {
             {/* Quantity */}
 
             <div>
-              <Label>Quantity received</Label>
+              <Label>
+                Quantity received
+              </Label>
 
               <Input
                 data-testid="se-qty"
@@ -457,7 +575,9 @@ export default function StockEntry() {
                 min="1"
                 value={qty}
                 onChange={(e) =>
-                  setQty(e.target.value)
+                  setQty(
+                    e.target.value
+                  )
                 }
               />
             </div>
@@ -465,14 +585,20 @@ export default function StockEntry() {
             {/* Receipt date */}
 
             <div>
-              <Label>Date of receipt</Label>
+              <Label>
+                Date of receipt
+              </Label>
 
               <Input
                 data-testid="se-receipt"
                 type="date"
-                value={receiptDate}
+                value={
+                  receiptDate
+                }
                 onChange={(e) =>
-                  setReceiptDate(e.target.value)
+                  setReceiptDate(
+                    e.target.value
+                  )
                 }
               />
             </div>
@@ -480,13 +606,17 @@ export default function StockEntry() {
             {/* Lot */}
 
             <div>
-              <Label>Lot number</Label>
+              <Label>
+                Lot number
+              </Label>
 
               <Input
                 data-testid="se-lot"
                 value={lotNumber}
                 onChange={(e) =>
-                  setLotNumber(e.target.value)
+                  setLotNumber(
+                    e.target.value
+                  )
                 }
               />
             </div>
@@ -494,14 +624,18 @@ export default function StockEntry() {
             {/* Expiry */}
 
             <div>
-              <Label>Date of expiry</Label>
+              <Label>
+                Date of expiry
+              </Label>
 
               <Input
                 data-testid="se-expiry"
                 type="date"
                 value={expiry}
                 onChange={(e) =>
-                  setExpiry(e.target.value)
+                  setExpiry(
+                    e.target.value
+                  )
                 }
               />
             </div>
@@ -509,42 +643,62 @@ export default function StockEntry() {
             {/* Manufacturer */}
 
             <div>
-              <Label>Manufacturer</Label>
+              <Label>
+                Manufacturer
+              </Label>
 
               <AutoInput
                 id="mfr"
                 testid="se-mfr"
-                value={manufacturer}
-                onChange={setManufacturer}
-                options={meta.manufacturers}
+                value={
+                  manufacturer
+                }
+                onChange={
+                  setManufacturer
+                }
+                options={
+                  meta.manufacturers
+                }
               />
             </div>
 
             {/* Supplier */}
 
             <div>
-              <Label>Supplier</Label>
+              <Label>
+                Supplier
+              </Label>
 
               <AutoInput
                 id="sup"
                 testid="se-sup"
                 value={supplier}
-                onChange={setSupplier}
-                options={meta.suppliers}
+                onChange={
+                  setSupplier
+                }
+                options={
+                  meta.suppliers
+                }
               />
             </div>
 
             {/* Program */}
 
             <div>
-              <Label>Program</Label>
+              <Label>
+                Program
+              </Label>
 
               <AutoInput
                 id="prg"
                 testid="se-prog"
                 value={program}
-                onChange={setProgram}
-                options={meta.programs}
+                onChange={
+                  setProgram
+                }
+                options={
+                  meta.programs
+                }
               />
             </div>
 
@@ -563,11 +717,11 @@ export default function StockEntry() {
           </form>
         </Card>
 
-        {/* =====================================================
+        {/* ======================================================
             TABS
         ====================================================== */}
 
-        <div className="flex gap-2 mb-3 mt-4">
+        <div className="flex items-center gap-2 border-b border-slate-200 mt-6">
 
           <Button
             type="button"
@@ -577,7 +731,14 @@ export default function StockEntry() {
                 : "outline"
             }
             onClick={() =>
-              setActiveTab("entries")
+              setActiveTab(
+                "entries"
+              )
+            }
+            className={
+              activeTab === "entries"
+                ? "bg-indigo-950 hover:bg-indigo-900"
+                : ""
             }
           >
             Stock Entries
@@ -586,43 +747,60 @@ export default function StockEntry() {
           <Button
             type="button"
             variant={
-              activeTab === "missing"
+              activeTab ===
+              "never-entered"
                 ? "default"
                 : "outline"
             }
             onClick={() =>
-              setActiveTab("missing")
+              setActiveTab(
+                "never-entered"
+              )
+            }
+            className={
+              activeTab ===
+              "never-entered"
+                ? "bg-indigo-950 hover:bg-indigo-900"
+                : ""
             }
           >
-            Items Without Stock Entry
+            Never Stock Entered
           </Button>
 
         </div>
 
-        {/* =====================================================
+        {/* ======================================================
             STOCK ENTRIES TAB
         ====================================================== */}
 
         {activeTab === "entries" && (
           <Card>
 
-            {/* Filters */}
-
             <div className="p-3 border-b border-slate-200 flex flex-wrap items-center gap-2">
+
+              {/* Search */}
 
               <Input
                 placeholder="Search item…"
                 className="max-w-xs"
                 value={search}
                 onChange={(e) =>
-                  setSearch(e.target.value)
+                  setSearch(
+                    e.target.value
+                  )
                 }
                 data-testid="se-list-search"
               />
 
+              {/* Program filter */}
+
               <Select
-                value={progFilter}
-                onValueChange={setProgFilter}
+                value={
+                  progFilter
+                }
+                onValueChange={
+                  setProgFilter
+                }
               >
                 <SelectTrigger
                   className="w-44"
@@ -632,39 +810,56 @@ export default function StockEntry() {
                 </SelectTrigger>
 
                 <SelectContent>
+
                   <SelectItem value="all">
                     All programs
                   </SelectItem>
 
-                  {meta.programs.map((p) => (
-                    <SelectItem key={p} value={p}>
-                      {p}
-                    </SelectItem>
-                  ))}
+                  {meta.programs.map(
+                    (p) => (
+                      <SelectItem
+                        key={p}
+                        value={p}
+                      >
+                        {p}
+                      </SelectItem>
+                    )
+                  )}
+
                 </SelectContent>
               </Select>
 
+              {/* Date filter */}
+
               <div className="flex items-center gap-1 text-xs text-slate-500">
 
-                <span>From</span>
+                <span>
+                  From
+                </span>
 
                 <Input
                   type="date"
                   value={from}
                   onChange={(e) =>
-                    setFrom(e.target.value)
+                    setFrom(
+                      e.target.value
+                    )
                   }
                   className="h-8"
                   data-testid="se-from"
                 />
 
-                <span>To</span>
+                <span>
+                  To
+                </span>
 
                 <Input
                   type="date"
                   value={to}
                   onChange={(e) =>
-                    setTo(e.target.value)
+                    setTo(
+                      e.target.value
+                    )
                   }
                   className="h-8"
                   data-testid="se-to"
@@ -672,25 +867,30 @@ export default function StockEntry() {
 
               </div>
 
+              {/* Export */}
+
               <div className="ml-auto flex items-center gap-2">
 
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={exportToExcel}
+                  onClick={
+                    exportToExcel
+                  }
                 >
                   Export Excel
                 </Button>
 
                 <div className="text-xs text-slate-500">
-                  {entries.length} entries
+                  {entries.length}{" "}
+                  entries
                 </div>
 
               </div>
 
             </div>
 
-            {/* Stock entries table */}
+            {/* Stock table */}
 
             <div className="overflow-x-auto">
 
@@ -714,72 +914,83 @@ export default function StockEntry() {
 
                 <tbody data-testid="se-list-body">
 
-                  {entries.map((e) => (
-                    <tr key={e.id}>
+                  {entries.map(
+                    (e) => (
+                      <tr key={e.id}>
 
-                      <td>
-                        {fmtDate(e.receipt_date)}
-                      </td>
+                        <td>
+                          {fmtDate(
+                            e.receipt_date
+                          )}
+                        </td>
 
-                      <td>
-                        {e.department}
-                      </td>
+                        <td>
+                          {e.department}
+                        </td>
 
-                      <td className="font-medium text-slate-900">
-                        {e.item_name}
-                      </td>
+                        <td className="font-medium text-slate-900">
+                          {e.item_name}
+                        </td>
 
-                      <td>
-                        {e.pack_size}
-                      </td>
+                        <td>
+                          {e.pack_size}
+                        </td>
 
-                      <td className="tabular-nums">
-                        {e.quantity}
-                      </td>
+                        <td className="tabular-nums">
+                          {e.quantity}
+                        </td>
 
-                      <td>
-                        {e.lot_number}
-                      </td>
+                        <td>
+                          {e.lot_number}
+                        </td>
 
-                      <td>
-                        {fmtDate(e.expiry_date)}
-                      </td>
+                        <td>
+                          {fmtDate(
+                            e.expiry_date
+                          )}
+                        </td>
 
-                      <td>
-                        {e.manufacturer}
-                      </td>
+                        <td>
+                          {e.manufacturer}
+                        </td>
 
-                      <td>
-                        {e.supplier}
-                      </td>
+                        <td>
+                          {e.supplier}
+                        </td>
 
-                      <td>
-                        {e.program}
-                      </td>
+                        <td>
+                          {e.program}
+                        </td>
 
-                      <td>
-                        {user?.role === "admin" && (
-                          <ConfirmDelete
-                            testid={`se-del-${e.id}`}
-                            title="Delete stock entry?"
-                            description={`${e.item_name} · Lot ${e.lot_number} · Qty ${e.quantity}`}
-                            onConfirm={() =>
-                              del(e.id)
-                            }
-                          />
-                        )}
-                      </td>
+                        <td>
+                          {user?.role ===
+                            "admin" && (
+                            <ConfirmDelete
+                              testid={`se-del-${e.id}`}
+                              title="Delete stock entry?"
+                              description={`${e.item_name} · Lot ${e.lot_number} · Qty ${e.quantity}`}
+                              onConfirm={() =>
+                                del(
+                                  e.id
+                                )
+                              }
+                            />
+                          )}
+                        </td>
 
-                    </tr>
-                  ))}
+                      </tr>
+                    )
+                  )}
 
-                  {entries.length === 0 && (
+                  {entries.length ===
+                    0 && (
                     <tr>
                       <td
                         colSpan={11}
                         className="text-center py-8 text-slate-400"
                       >
-                        No entries recorded.
+                        No entries
+                        recorded.
                       </td>
                     </tr>
                   )}
@@ -793,36 +1004,61 @@ export default function StockEntry() {
           </Card>
         )}
 
-        {/* =====================================================
-            ITEMS WITHOUT STOCK ENTRY TAB
+        {/* ======================================================
+            NEVER STOCK ENTERED TAB
         ====================================================== */}
 
-        {activeTab === "missing" && (
+        {activeTab ===
+          "never-entered" && (
           <Card>
 
-            <div className="p-3 border-b border-slate-200 flex flex-wrap items-center gap-2">
+            {/* Header / controls */}
+
+            <div className="p-4 border-b border-slate-200 flex flex-wrap items-center gap-3">
 
               <div>
-                <div className="font-semibold text-slate-900">
-                  Items Without Stock Entry
-                </div>
+                <h3 className="font-semibold text-slate-900">
+                  Items without stock entry
+                </h3>
 
-                <div className="text-xs text-slate-500">
-                  Items in the master list that have never
-                  received a stock entry
-                </div>
+                <p className="text-xs text-slate-500 mt-1">
+                  Items in the Items master
+                  that have never been
+                  recorded in Stock Entry.
+                </p>
               </div>
 
-              <div className="ml-auto flex items-center gap-3">
+              <div className="ml-auto flex items-center gap-2">
 
-                <div className="text-xs text-slate-500">
-                  {neverEnteredItems.length} items
-                </div>
+                <Input
+                  placeholder="Search item…"
+                  className="w-56"
+                  value={
+                    neverEnteredSearch
+                  }
+                  onChange={(e) =>
+                    setNeverEnteredSearch(
+                      e.target.value
+                    )
+                  }
+                />
 
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={exportNeverEnteredItems}
+                  onClick={
+                    loadNeverEnteredItems
+                  }
+                >
+                  Refresh
+                </Button>
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={
+                    exportNeverEnteredToExcel
+                  }
                 >
                   Export Excel
                 </Button>
@@ -831,47 +1067,116 @@ export default function StockEntry() {
 
             </div>
 
+            {/* Department information */}
+
+            <div className="px-4 py-3 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+
+              <div className="text-sm text-slate-600">
+
+                Department:
+                <span className="font-semibold text-slate-900 ml-1">
+                  {department}
+                </span>
+
+              </div>
+
+              <div className="text-sm text-slate-600">
+
+                Items without stock:
+                <span className="font-semibold text-red-600 ml-1">
+                  {
+                    filteredNeverEnteredItems.length
+                  }
+                </span>
+
+              </div>
+
+            </div>
+
+            {/* Never stocked table */}
+
             <div className="overflow-x-auto">
 
               <table className="data-table w-full">
 
                 <thead>
+
                   <tr>
+                    <th>Sl. No.</th>
                     <th>Department</th>
                     <th>Item Name</th>
                     <th>Pack Size</th>
                   </tr>
+
                 </thead>
 
                 <tbody>
 
-                  {neverEnteredItems.map((item) => (
-                    <tr key={item.id}>
-
-                      <td>
-                        {item.department}
-                      </td>
-
-                      <td className="font-medium text-slate-900">
-                        {item.name}
-                      </td>
-
-                      <td>
-                        {item.pack_size}
-                      </td>
-
-                    </tr>
-                  ))}
-
-                  {neverEnteredItems.length === 0 && (
-                    <tr>
-                      <td
-                        colSpan={3}
-                        className="text-center py-8 text-slate-400"
+                  {filteredNeverEnteredItems.map(
+                    (item, index) => (
+                      <tr
+                        key={
+                          item.id
+                        }
                       >
-                        All items in {department} have
-                        stock entries.
+
+                        <td>
+                          {index + 1}
+                        </td>
+
+                        <td>
+                          {item.department}
+                        </td>
+
+                        <td className="font-medium text-slate-900">
+                          {
+                            item.item_name
+                          }
+                        </td>
+
+                        <td>
+                          {
+                            item.pack_size
+                          }
+                        </td>
+
+                      </tr>
+                    )
+                  )}
+
+                  {filteredNeverEnteredItems.length ===
+                    0 && (
+                    <tr>
+
+                      <td
+                        colSpan={4}
+                        className="text-center py-10"
+                      >
+
+                        {neverEnteredItems.length ===
+                        0 ? (
+                          <div>
+                            <div className="text-slate-500 font-medium">
+                              No items found
+                            </div>
+
+                            <div className="text-xs text-slate-400 mt-1">
+                              All items in{" "}
+                              {department}{" "}
+                              have already
+                              had a stock
+                              entry.
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="text-slate-500">
+                            No items match
+                            your search.
+                          </div>
+                        )}
+
                       </td>
+
                     </tr>
                   )}
 
