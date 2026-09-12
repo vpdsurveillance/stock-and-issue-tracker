@@ -500,9 +500,7 @@ async def meta_field(
     ])
 
 
-# ============================================================
-# STOCK ENTRIES
-# ============================================================
+
 # ============================================================
 # STOCK ENTRIES
 # ============================================================
@@ -516,7 +514,7 @@ async def create_stock(
     body: StockEntryIn,
     user: dict = Depends(get_current_user)
 ):
-
+    # Check that the item exists in Items Master
     item = await db.items.find_one({
         "id": body.item_id
     })
@@ -527,10 +525,13 @@ async def create_stock(
             detail=f"Item not found: {body.item_name}"
         )
 
+    # Convert Pydantic model to dictionary
     doc = body.model_dump()
 
+    # Generate unique stock-entry ID
     doc["id"] = str(uuid.uuid4())
 
+    # Convert dates to ISO format
     doc["receipt_date"] = _iso(
         _parse_date(doc["receipt_date"])
     )
@@ -539,14 +540,17 @@ async def create_stock(
         _parse_date(doc["expiry_date"])
     )
 
+    # Created information
     doc["created_at"] = _iso(
         datetime.now(timezone.utc)
     )
 
     doc["created_by"] = user["email"]
 
+    # Save stock entry
     await db.stock_entries.insert_one(doc)
 
+    # Remove MongoDB internal ID before returning
     doc.pop("_id", None)
 
     return doc
@@ -558,22 +562,180 @@ async def create_stock(
 
 @api.post("/stock/batch")
 async def create_stock_batch(
-@api.post("/stock/batch")
-async def create_stock_batch(...):
-    ...
+    body: StockBatchIn,
+    user: dict = Depends(get_current_user)
+):
+    docs = []
 
+    for entry in body.items:
+
+        # Check that item exists
+        item = await db.items.find_one({
+            "id": entry.item_id
+        })
+
+        if not item:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Item not found: {entry.item_name}"
+            )
+
+        doc = entry.model_dump()
+
+        doc["id"] = str(uuid.uuid4())
+
+        doc["receipt_date"] = _iso(
+            _parse_date(doc["receipt_date"])
+        )
+
+        doc["expiry_date"] = _iso(
+            _parse_date(doc["expiry_date"])
+        )
+
+        doc["created_at"] = _iso(
+            datetime.now(timezone.utc)
+        )
+
+        doc["created_by"] = user["email"]
+
+        docs.append(doc)
+
+    if docs:
+        await db.stock_entries.insert_many(docs)
+
+    for doc in docs:
+        doc.pop("_id", None)
+
+    return docs
+
+
+# ============================================================
+# GET STOCK ENTRIES
+# ============================================================
 
 @api.get("/stock")
-async def list_stock(...):
-    ...
+async def get_stock(
+    department: Optional[str] = None,
+    search: Optional[str] = None,
+    from_date: Optional[str] = None,
+    to_date: Optional[str] = None,
+    program: Optional[str] = None,
+    user: dict = Depends(get_current_user)
+):
+    query = {}
+
+    if department:
+        query["department"] = department
+
+    if program:
+        query["program"] = program
+
+    if search:
+        query["$or"] = [
+            {
+                "item_name": {
+                    "$regex": search,
+                    "$options": "i"
+                }
+            },
+            {
+                "lot_number": {
+                    "$regex": search,
+                    "$options": "i"
+                }
+            },
+            {
+                "manufacturer": {
+                    "$regex": search,
+                    "$options": "i"
+                }
+            },
+            {
+                "supplier": {
+                    "$regex": search,
+                    "$options": "i"
+                }
+            }
+        ]
+
+    if from_date:
+        query.setdefault("receipt_date", {})
+        query["receipt_date"]["$gte"] = from_date
+
+    if to_date:
+        query.setdefault("receipt_date", {})
+        query["receipt_date"]["$lte"] = to_date
+
+    entries = await db.stock_entries.find(
+        query,
+        {"_id": 0}
+    ).sort(
+        "receipt_date",
+        -1
+    ).to_list(10000)
+
+    return entries
 
 
 # ============================================================
-# ITEMS NEVER STOCKED
+# NEVER STOCK ENTERED
+# IMPORTANT:
+# THIS MUST COME BEFORE /stock/{sid}
 # ============================================================
 
-async def _never_stocked_items(...):
-    ...
+async def _never_stocked_items(
+    department: Optional[str] = None
+):
+    item_filter = {}
+
+    if department:
+        item_filter["department"] = department
+
+    items = await db.items.find(
+        item_filter,
+        {"_id": 0}
+    ).sort(
+        "name",
+        1
+    ).to_list(10000)
+
+    stock_filter = {}
+
+    if department:
+        stock_filter["department"] = department
+
+    stocked_item_ids = await db.stock_entries.distinct(
+        "item_id",
+        stock_filter
+    )
+
+    stocked_item_ids = set(stocked_item_ids)
+
+    result = []
+
+    for item in items:
+
+        item_id = item.get("id")
+
+        if item_id not in stocked_item_ids:
+
+            result.append({
+                "id": item_id,
+                "department": item.get(
+                    "department",
+                    ""
+                ),
+                "item_name": item.get(
+                    "name",
+                    ""
+                ),
+                "pack_size": item.get(
+                    "pack_size",
+                    ""
+                )
+            })
+
+    return result
 
 
 @api.get("/stock/never-entered")
@@ -581,11 +743,15 @@ async def stock_never_entered(
     department: Optional[str] = None,
     user: dict = Depends(get_current_user)
 ):
-    return await _never_stocked_items(department)
+    return await _never_stocked_items(
+        department
+    )
 
 
 # ============================================================
 # DELETE STOCK ENTRY
+# IMPORTANT:
+# THIS MUST COME AFTER /stock/never-entered
 # ============================================================
 
 @api.delete("/stock/{sid}")
@@ -593,18 +759,19 @@ async def del_stock(
     sid: str,
     user: dict = Depends(require_admin)
 ):
-    r = await db.stock_entries.delete_one({
+    result = await db.stock_entries.delete_one({
         "id": sid
     })
 
-    if r.deleted_count == 0:
+    if result.deleted_count == 0:
         raise HTTPException(
-            404,
-            "Not found"
+            status_code=404,
+            detail="Not found"
         )
 
-    return {"ok": True}
-
+    return {
+        "ok": True
+    }
 
 # ============================================================
 # ISSUES
